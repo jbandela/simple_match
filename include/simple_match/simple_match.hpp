@@ -236,14 +236,14 @@ namespace simple_match {
 			struct helper {
 				template<class T, class A>
 				static bool check(T&& t, A&& a) {
-					return match_check(tu::get<pos>(std::forward<T>(t)), tu::get<pos>(std::forward<A>(a)))
+					return match_check(tu::template get<pos>(std::forward<T>(t)), tu::template get<pos>(std::forward<A>(a)))
 						&& helper<pos + 1, last>::check(std::forward<T>(t), std::forward<A>(a));
 
 				}
 
 				template<class T, class A>
 				static auto get(T&& t, A&& a) {
-					return std::tuple_cat(match_get(tu::get<pos>(std::forward<T>(t)), tu::get<pos>(std::forward<A>(a))),
+					return std::tuple_cat(match_get(tu::template get<pos>(std::forward<T>(t)), tu::template get<pos>(std::forward<A>(a))),
 						helper<pos + 1, last>::get(std::forward<T>(t), std::forward<A>(a)));
 
 				}
@@ -253,12 +253,12 @@ namespace simple_match {
 			struct helper<pos, pos> {
 				template<class T, class A>
 				static bool check(T&& t, A&& a) {
-					return match_check(tu::get<pos>(std::forward<T>(t)), tu::get<pos>(std::forward<A>(a)));
+					return match_check(tu::template get<pos>(std::forward<T>(t)), tu::template get<pos>(std::forward<A>(a)));
 
 				}
 				template<class T, class A>
 				static auto get(T&& t, A&& a) {
-					return match_get(tu::get<pos>(std::forward<T>(t)), tu::get<pos>(std::forward<A>(a)));
+					return match_get(tu::template get<pos>(std::forward<T>(t)), tu::template get<pos>(std::forward<A>(a)));
 
 				}
 			};
