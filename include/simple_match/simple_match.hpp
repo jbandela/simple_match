@@ -282,7 +282,7 @@ namespace simple_match {
 
 	template<class... A>
 	auto tup(A&& ... a) {
-		return std::forward_as_tuple(std::forward<A>(a)...);
+		return std::make_tuple(std::forward<A>(a)...);
 	}
 }
 
