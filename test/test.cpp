@@ -69,9 +69,11 @@ void test_some_none() {
 
 	auto tup_12 = std::make_unique < std::tuple<int, int>>(1, 2);
 	auto point_12 = std::make_unique <point>(point{ 1, 2 });
+	auto point_34 = std::make_unique <point>(point{ 3, 4 });
 
 	m2(tup_12);
 	m2(point_12);
+	m2(point_34);
 
 
 
