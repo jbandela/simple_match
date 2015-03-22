@@ -6,7 +6,42 @@
 #include <iostream>
 
 
+
+
+#include "../include/simple_match/some_none.hpp"
+
+
+void test_some_none() {
+	std::unique_ptr<int> nothing;
+	using namespace simple_match;
+	using namespace simple_match::placeholders;
+
+	auto five = std::make_unique<int>(5);
+	auto ten = std::make_unique<int>(10);
+	auto twelve = std::make_unique<int>(12);
+
+	auto m = [](auto&& v) {
+		using namespace simple_match;
+		using namespace simple_match::placeholders;
+		match(v,
+			some(5), []() {std::cout << "five\n"; },
+			some( 11 <=_x <= 20 ), [](int x) {std::cout << x << " is on the range [11,20] \n"; },
+			some(), [](int x) {std::cout << x << "\n"; },
+			none(), []() {std::cout << "Nothing\n"; }
+		);
+	};
+
+	m(nothing);
+	m(five);
+	m(ten);
+	m(twelve);
+
+}
+
+
 int main() {
+
+	test_some_none();
 
 	using namespace simple_match;
 	using namespace simple_match::placeholders;
