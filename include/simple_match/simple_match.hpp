@@ -49,6 +49,17 @@ namespace simple_match {
 		return m::get(std::forward<T>(t), std::forward<U>(u));
 	}
 
+	template<class T, class A1, class F1>
+	auto match(T&& t, A1&& a, F1&& f) {
+		if (match_check(std::forward<T>(t), std::forward<A1>(a))) {
+			return detail::apply(f, match_get(std::forward<T>(t), std::forward<A1>(a)));
+		}
+		else {
+			throw std::logic_error("No match");
+		}
+	}
+
+
 	template<class T, class A1, class F1, class A2, class F2, class... Args>
 	auto match(T&& t, A1&& a, F1&& f, A2&& a2, F2&& f2, Args&&... args) {
 		if (match_check(t, a)) {
@@ -59,15 +70,7 @@ namespace simple_match {
 		}
 	}
 
-	template<class T, class A1, class F1>
-	auto match(T&& t, A1&& a, F1&& f) {
-		if (match_check(std::forward<T>(t), std::forward<A1>(a))) {
-			return detail::apply(f, match_get(std::forward<T>(t), std::forward<A1>(a)));
-		}
-		else {
-			throw std::logic_error("No match");
-		}
-	}
+
 
 
 	struct otherwise_t {};
