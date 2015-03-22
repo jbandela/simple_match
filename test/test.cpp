@@ -21,8 +21,6 @@ void test_some_none() {
 	auto twelve = std::make_unique<int>(12);
 
 	auto m = [](auto&& v) {
-		using namespace simple_match;
-		using namespace simple_match::placeholders;
 		match(v,
 			some(5), []() {std::cout << "five\n"; },
 			some( 11 <=_x <= 20 ), [](int x) {std::cout << x << " is on the range [11,20] \n"; },
