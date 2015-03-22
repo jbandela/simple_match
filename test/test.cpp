@@ -10,6 +10,29 @@
 
 #include "../include/simple_match/some_none.hpp"
 
+struct point {
+	int x;
+	int y;
+};
+
+
+namespace simple_match {
+	namespace customization {
+		template<>
+		struct tuple_adapter<point>{
+
+			enum { tuple_len = 2 };
+
+			template<size_t I, class T>
+			static decltype(auto) get(T&& t) {
+				return std::get<I>(std::tie(t.x,t.y));
+			}
+		};
+	}
+}
+
+
+
 
 void test_some_none() {
 	std::unique_ptr<int> nothing;
@@ -33,6 +56,24 @@ void test_some_none() {
 	m(five);
 	m(ten);
 	m(twelve);
+
+
+	auto m2 = [](auto&& v) {
+		match(v,
+			some(tup(1,2)), []() {std::cout << "one,two\n"; },
+			some(tup(_x,_x)), [](int x, int y) {std::cout << x << " " << y << "\n"; },
+			none(), []() {std::cout << "Nothing\n"; }
+		);
+	};
+
+
+	auto tup_12 = std::make_unique < std::tuple<int, int>>(1, 2);
+	auto point_12 = std::make_unique <point>(point{ 1, 2 });
+
+	m2(tup_12);
+	m2(point_12);
+
+
 
 }
 

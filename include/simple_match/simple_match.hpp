@@ -218,6 +218,10 @@ namespace simple_match {
 
 	}
 
+	namespace detail {
+		struct tuple_ignorer {};
+	}
+
 	namespace customization {
 
 		template<class Type>
@@ -234,19 +238,19 @@ namespace simple_match {
 		template<class Type, class... Args>
 		struct matcher<Type, std::tuple<Args...>> {
 			using tu = tuple_adapter<Type>;
-			enum { tuple_len = tu::tuple_len};
+			enum { tuple_len = sizeof... (Args) - 1};
 			template<size_t pos, size_t last>
 			struct helper {
 				template<class T, class A>
 				static bool check(T&& t, A&& a) {
-					return match_check(tu::template get<pos>(std::forward<T>(t)), tu::template get<pos>(std::forward<A>(a)))
+					return match_check(tu::template get<pos>(std::forward<T>(t)), std::get<pos>(std::forward<A>(a)))
 						&& helper<pos + 1, last>::check(std::forward<T>(t), std::forward<A>(a));
 
 				}
 
 				template<class T, class A>
 				static auto get(T&& t, A&& a) {
-					return std::tuple_cat(match_get(tu::template get<pos>(std::forward<T>(t)), tu::template get<pos>(std::forward<A>(a))),
+					return std::tuple_cat(match_get(tu::template get<pos>(std::forward<T>(t)), std::get<pos>(std::forward<A>(a))),
 						helper<pos + 1, last>::get(std::forward<T>(t), std::forward<A>(a)));
 
 				}
@@ -256,12 +260,12 @@ namespace simple_match {
 			struct helper<pos, pos> {
 				template<class T, class A>
 				static bool check(T&& t, A&& a) {
-					return match_check(tu::template get<pos>(std::forward<T>(t)), tu::template get<pos>(std::forward<A>(a)));
+					return match_check(tu::template get<pos>(std::forward<T>(t)), std::get<pos>(std::forward<A>(a)));
 
 				}
 				template<class T, class A>
 				static auto get(T&& t, A&& a) {
-					return match_get(tu::template get<pos>(std::forward<T>(t)), tu::template get<pos>(std::forward<A>(a)));
+					return match_get(tu::template get<pos>(std::forward<T>(t)), std::get<pos>(std::forward<A>(a)));
 
 				}
 			};
@@ -285,7 +289,7 @@ namespace simple_match {
 
 	template<class... A>
 	auto tup(A&& ... a) {
-		return std::make_tuple(std::forward<A>(a)...);
+		return std::make_tuple(std::forward<A>(a)..., detail::tuple_ignorer{});
 	}
 }
 
