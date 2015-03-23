@@ -3,10 +3,37 @@
 #define SIMPLE_MATCH_SOME_NONE_HPP_JRB_2015_03_21
 #include "simple_match.hpp"
 #include <memory>
+#include <type_traits>
 
 namespace simple_match {
 
 	namespace detail {
+
+		template<class T,class C>
+		struct cv_helper_imp;
+
+		template<class T, class C>
+		struct cv_helper_imp<T*,C> {
+			using type = std::add_pointer_t<C>;
+		};
+
+		template<class T, class C>
+		struct cv_helper_imp<const T*, C> {
+			using type = std::add_pointer_t<std::add_const_t<C>>;
+		};
+
+		template<class T, class C>
+		struct cv_helper_imp<volatile T*,C> {
+			using type = std::add_pointer_t<std::add_volatile_t<C>>;
+		};
+		
+		template<class T, class C>
+		struct cv_helper_imp<const volatile T*,C> {
+			using type = std::add_pointer_t<std::add_cv_t<C>>;
+		};
+
+		template<class T, class C>
+		using cv_helper = typename cv_helper_imp<T,C>::type;
 
 		template<class Type>
 		struct pointer_getter {};
@@ -44,7 +71,7 @@ namespace simple_match {
 				if (!ptr) {
 					return false;
 				}
-				auto casted_ptr = dynamic_cast<Class*>(ptr);
+				auto casted_ptr = dynamic_cast<cv_helper<decltype(ptr),Class>>(ptr);
 				if (!casted_ptr) {
 					return false;
 				}
@@ -54,7 +81,8 @@ namespace simple_match {
 
 			template<class T>
 			auto get(T&& t) {
-				auto casted_ptr = dynamic_cast<Class*>(pointer_getter<std::decay_t<T>>::get_pointer(std::forward<T>(t)));
+				auto ptr = pointer_getter<std::decay_t<T>>::get_pointer(std::forward<T>(t));
+				auto casted_ptr = dynamic_cast<cv_helper<decltype(ptr), Class>>(pointer_getter<std::decay_t<T>>::get_pointer(std::forward<T>(t)));
 				return match_get(*casted_ptr, m_);
 			}
 
@@ -93,7 +121,7 @@ namespace simple_match {
 				if (!ptr) {
 					return false;
 				}
-				auto casted_ptr = dynamic_cast<Class*>(ptr);
+				auto casted_ptr = dynamic_cast<cv_helper<decltype(ptr), Class>>(ptr);
 				if (!casted_ptr) {
 					return false;
 				}
@@ -103,7 +131,8 @@ namespace simple_match {
 
 			template<class T>
 			auto get(T&& t) {
-				auto casted_ptr = dynamic_cast<const Class*>(pointer_getter<std::decay_t<T>>::get_pointer(std::forward<T>(t)));
+				auto ptr = pointer_getter<std::decay_t<T>>::get_pointer(std::forward<T>(t));
+				auto casted_ptr = dynamic_cast<cv_helper<decltype(ptr), Class>>(ptr);
 				return std::tie(*t);
 			}
 
@@ -180,9 +209,9 @@ namespace simple_match {
 		};
 	}
 
-	detail::none_t none() { return {}; }
+	inline detail::none_t none() { return {}; }
 
-	detail::some_t<void, void> some() { return{}; }
+	inline detail::some_t<void, void> some() { return{}; }
 
 	template<class Matcher>
 	detail::some_t<void, Matcher> some(Matcher&& m) { return{ std::forward<Matcher>(m) }; }
