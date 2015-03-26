@@ -1,3 +1,8 @@
+// Copyright 2015 John R. Bandela
+// Distributed under the Boost Software License, Version 1.0.
+//    (See accompanying file LICENSE_1_0.txt or copy at
+//          http://www.boost.org/LICENSE_1_0.txt)
+
 #pragma once
 #ifndef SIMPLE_MATCH_HPP_JRB_2015_03_21
 #define SIMPLE_MATCH_HPP_JRB_2015_03_21
@@ -93,7 +98,16 @@ namespace simple_match {
 			}
 
 		};
-
+		// Match string literals
+		template<class T>
+		struct matcher<T, const char*> {
+			static bool check(const T& t, const char* str) {
+				return t == str;
+			}
+			static auto get(const T&, const T&) {
+				return std::tie();
+			}
+		};
 
 
 

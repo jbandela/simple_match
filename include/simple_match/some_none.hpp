@@ -1,3 +1,8 @@
+// Copyright 2015 John R. Bandela
+// Distributed under the Boost Software License, Version 1.0.
+//    (See accompanying file LICENSE_1_0.txt or copy at
+//          http://www.boost.org/LICENSE_1_0.txt)
+
 #pragma once
 #ifndef SIMPLE_MATCH_SOME_NONE_HPP_JRB_2015_03_21
 #define SIMPLE_MATCH_SOME_NONE_HPP_JRB_2015_03_21
@@ -209,20 +214,20 @@ namespace simple_match {
 		};
 	}
 
-	inline detail::none_t none() { return {}; }
+	inline detail::none_t none() { return detail::none_t{}; }
 
-	inline detail::some_t<void, void> some() { return{}; }
+	inline detail::some_t<void, void> some() { return detail::some_t<void, void>{}; }
 
 	template<class Matcher>
-	detail::some_t<void, Matcher> some(Matcher&& m) { return{ std::forward<Matcher>(m) }; }
+	detail::some_t<void, Matcher> some(Matcher&& m) { return detail::some_t<void, Matcher> { std::forward<Matcher>(m) }; }
 
 	template<class Class, class Matcher>
 	detail::some_t<Class, Matcher> some(Matcher&& m) {
-		return{ std::forward<Matcher>(m) };
+		return detail::some_t<Class, Matcher> { std::forward<Matcher>(m) };
 	}
 	template<class Class>
 	detail::some_t<Class, void> some() {
-		return{ };
+		return detail::some_t<Class, void>{ };
 	}
 }
 

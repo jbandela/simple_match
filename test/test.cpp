@@ -80,30 +80,40 @@ void test_some_none() {
 }
 
 
-int main() {
+void test_string() {
 
+	std::string s = "Test";
+
+	using namespace simple_match;
+	using namespace simple_match::placeholders;
+	match(s,
+		
+		"One", []() {std::cout << "one\n"; },
+		"Test", []() {std::cout << "two \n"; },
+		otherwise, []() {std::cout << "did not match \n"; }
+	);
+
+}
+
+
+
+int main() {
+	test_string();
 	test_some_none();
 
 	using namespace simple_match;
 	using namespace simple_match::placeholders;
 
-	std::tuple<int, int> t{1, 2};
 	int x = 0;
-	int y = 0;
-
-	using std::tie;
-	using std::forward_as_tuple;
 
 	while (true) {
 		std::cin >> x;
-		std::cin >> y;
-		match(tie(x,y),
-			tup(1,1),						[]() {std::cout << "The answer is one\n"; },
-			tup(2,2),						[]() {std::cout << "The answer is two\n"; },
-			tup(_x > 10, _x < 10),				[](auto&& a, auto && b) {std::cout << "The answer " << a << " " << b  << " is less than 10\n"; },
-			tup(10 < _x < 20,10 < _x < 20),			[](auto&& a, auto&& b) {std::cout << "The answer " << a << " " << b << " is between 10 and 20 exclusive\n"; },
-			tup(_ ,100 <= _x && _x <= 200), [](auto&& a) {std::cout << "The answer " << a << " is between 100 and 200 inclusive\n"; },
-			otherwise,				[]() {std::cout << "Did not match\n"; }
+		match(x,
+			1, []() {std::cout << "The answer is one\n"; },
+			2, []() {std::cout << "The answer is two\n"; },
+			_x < 10, [](auto&& a) {std::cout << "The answer " << a << " is less than 10\n"; },
+			10 < _x < 20,	[](auto&& a) {std::cout << "The answer " << a  << " is between 10 and 20 exclusive\n"; },
+			_, []() {std::cout << "Did not match\n"; }
 
 		);
 
