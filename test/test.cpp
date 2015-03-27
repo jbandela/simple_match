@@ -13,8 +13,8 @@
 struct point {
 	int x;
 	int y;
+	point(int x_, int y_) :x(x_), y(y_) {}
 };
-
 
 namespace simple_match {
 	namespace customization {
@@ -94,6 +94,7 @@ void test_string() {
 	);
 
 }
+
 
 
 

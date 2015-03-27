@@ -67,6 +67,320 @@ and
 ## License
 Licensed under the Boost Software License.
 
+## Tutorial
 
+We are going to assume you have the following at the top of your file
+
+```
+#incude "simple_match/simple_match.hpp"
+#incude "simple_match/some_none.hpp"
+
+
+using namespace simple_match;
+using namespace simple_match::placeholders;
+
+```
+
+Here is how to match exactly
+
+```
+int i = 0;
+match(i,
+	1, [](){std::cout << "The answer is one";}
+	2, [](){std::cout << "The answer is two";}
+	otherwise, [](){std::cout << "Did not match"}
+);
+```
+The match function will try matching from top to bottom and run the lamba corresponding to the first successful match. `otherwise` always matches, and therefore you should have it at the end. If you find `otherwise` too long, you can also use `_`. It is located in the namespace `simple_match::placeholders`
+
+Match also works for strings. 
+```
+std::string s = "";
+
+match(s,
+	"Hello", [](){ std::cout << " You said hello\n";},
+	_, [](){std::cout << "I do not know what you said\n";} // _ is the same as otherwise
+);
+
+```
+
+
+You can even return values from a match
+
+char digit = '0';
+
+int value = match(digit,
+	'0', [](){return 0;},
+	'1', [](){return 1;},
+	'2', [](){return 2;},	
+	'3', [](){return 3;},
+	'4', [](){return 4;},
+	'5', [](){return 5;},
+// and so on
+);
+
+We can also do comparisons, and ranges. To do so use `_x` from the `simple_match::placeholders` namespace.
+
+```
+int i = 0;
+match(i,
+	_x < 0, [](int x){std::cout << x << " is a negative number\n";},
+	1 < _x < 10, [](int z){std::cout << z << " is between 1 and 10\n"},
+	_x, [](int x){std::cout << x << " is the value\n";}
+);
+
+```
+There are a some items of interest in the above example. When `_x` is used, it passes its value to the lambda. If `_x` is used without any comparison, it will pass the value to the lambda. Also, because of the way it is overloaded, it is very easy to make ranges using the `<` or `<=` operator as seen in the match above.
+
+### Tuples
+
+Now we can even have more fun! Let's represent a 2d point as a tuple.
+
+```
+std::tuple<int,int> p(0,0);
+
+match(p,
+	tup(0,0), [](){std::cout << "Point is at the origin";},
+	tup(0,_), [](){std::cout << "Point is on the horizontal axis";},
+	tup(_,0), [](){std::cout << "Point is on the vertical axis";}.
+	tup(_x < 10,_), [](int x){std::cout << x << " is less than 10";},
+	tup(_x,_x), [](int x, int y){ std::cout << x << "," << y << " Is not on an axis";}
+);
+
+```
+`tup` does tuple matching. Notice you can use the same expressions as you could without tuples. As before `_x` results in a value being passed to the lambda. `_` matches anything and ignores it, so no corresponding variable is passed to the lambda.
+
+We can actually use `tup` to deconstruct our own `struct`s and `class`es .
+First we have to specialize `simple_match::customization::tuple_adapter` for our type.
+
+```
+struct point{
+	int x;
+	int y;
+	point(int x_,int y_):x(x_),y(y_){}
+};
+
+// Adapting point to be used with tup
+namespace simple_match {
+	namespace customization {
+		template<>
+		struct tuple_adapter<point>{
+
+			enum { tuple_len = 2 };
+
+			template<size_t I, class T>
+			static decltype(auto) get(T&& t) {
+				return std::get<I>(std::tie(t.x,t.y));
+			}
+		};
+	}
+}
+
+```
+
+Then we can use `tup` like we did with a tuple.
+
+```
+point p{0,0};
+
+match(p,
+	tup(0,0), [](){std::cout << "Point is at the origin";},
+	tup(0,_), [](){std::cout << "Point is on the horizontal axis";},
+	tup(_,0), [](){std::cout << "Point is on the vertical axis";}.
+	tup(_x < 10,_), [](int x){std::cout << x << " is less than 10";},
+	tup(_x,_x), [](int x, int y){ std::cout << x << "," << y << " Is not on an axis";}
+);
+```
+
+### Pointers as option types
+Sometimes we have pointer that we want to get a value safely out of. To do this we can use `some` and `none` . To do this we have to include `simple_match/some_none.hpp` 
+
+Let us use the same `point` as before
+
+```
+point* pp = new point(0,0);
+
+match(pp,
+	some(), [](point& p){std::cout << p.x << " is the x-value";}
+	none(), [](){std::cout << "Null pointer\n";}
+);
+
+```
+
+Notice how `some()` converted the pointer to a reference and passed it to us.
+
+Now, that is now how we should allocate memory with a naked new. We would probably use a `std::unique_ptr`. `some` has built in support for `unique_ptr` and `shared_ptr`. So we can write it like this.
+
+```
+auto pp = std::make_unique<point>(0,0);
+
+match(pp,
+	some(), [](point& p){std::cout << p.x << " is the x-value";}
+	none(), [](){std::cout << "Null pointer\n";}
+);
+
+```
+Notice, how our match code did not change.
+
+We can do better because `some` composes. Since we specialized `tuple_adapter` we can use `tup` with `point`.
+
+```
+auto pp = std::make_unique<point>(0,0);
+
+match(pp,
+	some(tup(0,0)), [](){std::cout << "Point is at the origin";},
+	some(tup(0,_)), [](){std::cout << "Point is on the horizontal axis";},
+	some(tup(_,0)), [](){std::cout << "Point is on the vertical axis";}.
+	some(tup(_x < 10,_)), [](int x){std::cout << x << " is less than 10";},
+	some(tup(_x,_x)), [](int x, int y){ std::cout << x << "," << y << " Is not on an axis";},
+	none(), [](){std::cout << "Null pointer";}
+);
+```
+Notice how `some` and `tup` compose. If we wanted to to, we could have pointers in tuples, and tuples in pointers and it would just work.
+
+`some` can also use RTTI to do downcasting.
+
+Here is an example. We will now make `point` a base class and have point2d, and point3d as subclasses, and adapt them.
+
+```
+struct point{
+	virtual ~point(){}
+};
+
+struct point2d:point{
+	int x;
+	int y;
+	point2d(int x_,int y_):x(x_),y(y_){}
+};
+
+struct point3d:point{
+	int x;
+	int y;
+	int z;
+	point3d(int x_,int y_, int z_):x(x_),y(y_),z(z_){}
+};
+
+// Adapting point2d and point3d to be used with tup
+namespace simple_match {
+	namespace customization {
+		template<>
+		struct tuple_adapter<point2d>{
+
+			enum { tuple_len = 2 };
+
+			template<size_t I, class T>
+			static decltype(auto) get(T&& t) {
+				return std::get<I>(std::tie(t.x,t.y));
+			}
+		};
+		template<>
+		struct tuple_adapter<point3d>{
+
+			enum { tuple_len = 3 };
+
+			template<size_t I, class T>
+			static decltype(auto) get(T&& t) {
+				return std::get<I>(std::tie(t.x,t.y,t.z));
+			}
+		};
+	}
+}
+
+```
+
+Then we can use it like this
+
+```
+std::unique_ptr<point> pp(new point2d(0,0));
+
+match(pp,
+	some<point2d>(tup(_x,_x)), [](int x, int y){std::cout << x << "," << y;},
+	some<point3d>(tup(_x,_x,_x)), [](int x, int y, int z){std::cout << x << "," << y << "," << z;},
+	some(), [](point& p){std::cout << "Unknown point type\n"},
+	none(), [](){std::cout << "Null pointer\n"}
+);
+
+```
+
+Notice how we can safely downcast, and use `tup` to destructure the `point`. Everything composes nicely.
+
+# Implementation Details
+
+simple_match actually was easier to implement than I thought it would be. I used the apply sample implementation from http://isocpp.org/files/papers/N3915.pdf to call a function with a tuple as arguments.
+
+Here is the core of the implementation
+
+```
+template<class T, class U>
+	bool match_check(T&& t, U&& u) {
+		using namespace customization;
+		using m = matcher<std::decay_t<T>, std::decay_t<U>>;
+		return m::check(std::forward<T>(t), std::forward<U>(u));
+	}
+
+
+	template<class T, class U>
+	auto match_get(T&& t, U&& u) {
+		using namespace customization;
+		using m = matcher<std::decay_t<T>, std::decay_t<U>>;
+		return m::get(std::forward<T>(t), std::forward<U>(u));
+	}
+
+	template<class T, class A1, class F1>
+	auto match(T&& t, A1&& a, F1&& f) {
+		if (match_check(std::forward<T>(t), std::forward<A1>(a))) {
+			return detail::apply(f, match_get(std::forward<T>(t), std::forward<A1>(a)));
+		}
+		else {
+			throw std::logic_error("No match");
+		}
+	}
+
+
+	template<class T, class A1, class F1, class A2, class F2, class... Args>
+	auto match(T&& t, A1&& a, F1&& f, A2&& a2, F2&& f2, Args&&... args) {
+		if (match_check(t, a)) {
+			return detail::apply(f, match_get(std::forward<T>(t), std::forward<A1>(a)));
+		}
+		else {
+			return match(t, std::forward<A2>(a2), std::forward<F2>(f2), std::forward<Args>(args)...);
+		}
+	}
+
+
+```
+
+`match` is a variadic function that takes the value to be matched, and then parameters for the match criteria, and lambda to be executed if the criteria succeeds. It goes through calling `match_check` until it returns true. Then it calls `match_get` to get a tuple of the values that need to be forwarded to the lambda, and uses apply to call the lambda.
+
+The match types are implemented by specializing `simple_match::customization::matcher`
+```
+	namespace customization {
+		template<class T, class U>
+		struct matcher;
+
+	}
+
+```
+
+For an example, here is how the matcher that matches to values is implemented. Note, that it does not pass any values to the lambda and so returns an empty tuple.
+
+```
+		// Match same type
+		template<class T>
+		struct matcher<T, T> {
+			static bool check(const T& t, const T& v) {
+				return t == v;
+			}
+			static auto get(const T&, const T&) {
+				return std::tie();
+			}
+
+		}
+
+```
+
+I hope you enjoy using this code, as much as I have enjoyed writing it. Please give me any feedback you may have.
+
+-- John R. Bandela, MD
 
 > Written with [StackEdit](https://stackedit.io/).

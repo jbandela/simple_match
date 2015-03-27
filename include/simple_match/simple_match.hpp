@@ -17,27 +17,24 @@ namespace simple_match {
 		struct matcher;
 
 	}	
-	
+
+	// Apply adapted from http://isocpp.org/files/papers/N3915.pdf
 	namespace detail {
-		template<typename F, typename Tuple, size_t... I>
-		auto
-			apply_(F&& f, Tuple&& args, std::integer_sequence<size_t, I...>)
-
-		{
-			return std::forward<F>(f)(std::get<I>(std::forward<Tuple>(args))...);
+		template <typename F, typename Tuple, size_t... I>
+		decltype(auto) apply_impl(F&& f, Tuple&& t, std::integer_sequence<size_t, I...>) {
+			using namespace std;
+			return forward<F>(f)(get<I>(forward<Tuple>(t))...);
 		}
-
-		template<typename F, typename Tuple>
-		auto
-			apply(F&& f, Tuple&& args)
-
-		{
-			return apply_(std::forward<F>(f), std::forward<Tuple>(args), std::make_index_sequence<std::tuple_size<typename std::remove_reference<Tuple>::type>::value >());
+		template <typename F, typename Tuple>
+		decltype(auto) apply(F&& f, Tuple&& t) {
+			using namespace std;
+			using Indices = make_index_sequence<tuple_size<decay_t<Tuple>>::value>;
+			return apply_impl(forward<F>(f), forward<Tuple>(t), Indices{});
 		}
-
 
 
 	}
+
 
 	template<class T, class U>
 	bool match_check(T&& t, U&& u) {
