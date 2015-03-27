@@ -107,6 +107,7 @@ match(s,
 
 You can even return values from a match
 
+```
 char digit = '0';
 
 int value = match(digit,
@@ -118,6 +119,7 @@ int value = match(digit,
 	'5', [](){return 5;},
 // and so on
 );
+```
 
 We can also do comparisons, and ranges. To do so use `_x` from the `simple_match::placeholders` namespace.
 
