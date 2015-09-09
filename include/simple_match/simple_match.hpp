@@ -23,13 +23,13 @@ namespace simple_match {
 		template <typename F, typename Tuple, size_t... I>
 		decltype(auto) apply_impl(F&& f, Tuple&& t, std::integer_sequence<size_t, I...>) {
 			using namespace std;
-			return forward<F>(f)(get<I>(forward<Tuple>(t))...);
+			return std::forward<F>(f)(get<I>(std::forward<Tuple>(t))...);
 		}
 		template <typename F, typename Tuple>
 		decltype(auto) apply(F&& f, Tuple&& t) {
 			using namespace std;
 			using Indices = make_index_sequence<tuple_size<decay_t<Tuple>>::value>;
-			return apply_impl(forward<F>(f), forward<Tuple>(t), Indices{});
+			return apply_impl(std::forward<F>(f), std::forward<Tuple>(t), Indices{});
 		}
 
 
@@ -156,7 +156,12 @@ namespace simple_match {
 	}
 
 	namespace placeholders {
+		const auto _u = make_matcher_predicate([](auto&&) {return true; });
+		const auto _v = make_matcher_predicate([](auto&&) {return true; });
+		const auto _w = make_matcher_predicate([](auto&&) {return true; });
 		const auto _x = make_matcher_predicate([](auto&&) {return true; });
+		const auto _y = make_matcher_predicate([](auto&&) {return true; });
+		const auto _z = make_matcher_predicate([](auto&&) {return true; });
 
 		// relational operators
 		template<class F, class T>
@@ -299,9 +304,35 @@ namespace simple_match {
 
 	}
 
+	// destructure a tuple or other adapted structure
 	template<class... A>
-	auto tup(A&& ... a) {
+	auto ds(A&& ... a) {
 		return std::make_tuple(std::forward<A>(a)..., detail::tuple_ignorer{});
+	}
+
+	// tagged_tuple
+
+	template<class T, class... Args>
+	struct tagged_tuple {
+		template<class... A>
+		using type = std::tuple<Args...>;
+		std::tuple<Args...> tuple_;
+		template<class... A>
+		tagged_tuple(A&&... a) :tuple_{ std::forward<A>(a)... } {}
+	};
+
+
+	namespace customization {
+		template<class T, class... Args>
+		struct tuple_adapter<tagged_tuple<T,Args...>> {
+
+			enum { tuple_len = sizeof...(Args) };
+
+			template<size_t I, class T>
+			static decltype(auto) get(T&& t) {
+				return std::get<I>(t.tuple_);
+			}
+		};
 	}
 }
 
