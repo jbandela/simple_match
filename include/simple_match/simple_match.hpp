@@ -230,6 +230,7 @@ namespace simple_match {
 	}
 
 	namespace detail {
+		// We use this class, so we can differentiate between matcher <T,T> and matchter <T,std::tuple<T...>
 		struct tuple_ignorer {};
 	}
 

@@ -12,13 +12,21 @@
 
 namespace simple_match {
 
+	namespace customization {
+
+		template<class Type>
+		struct pointer_getter {};
+
+
+	}
+
 	namespace detail {
 
-		template<class T,class C>
+		template<class T, class C>
 		struct cv_helper_imp;
 
 		template<class T, class C>
-		struct cv_helper_imp<T*,C> {
+		struct cv_helper_imp<T*, C> {
 			using type = std::add_pointer_t<C>;
 		};
 
@@ -28,43 +36,24 @@ namespace simple_match {
 		};
 
 		template<class T, class C>
-		struct cv_helper_imp<volatile T*,C> {
+		struct cv_helper_imp<volatile T*, C> {
 			using type = std::add_pointer_t<std::add_volatile_t<C>>;
 		};
-		
+
 		template<class T, class C>
-		struct cv_helper_imp<const volatile T*,C> {
+		struct cv_helper_imp<const volatile T*, C> {
 			using type = std::add_pointer_t<std::add_cv_t<C>>;
 		};
 
+	}
+	namespace utils {
 		template<class T, class C>
-		using cv_helper = typename cv_helper_imp<T,C>::type;
+		using cv_helper = typename detail::cv_helper_imp<T, C>::type;
 
-		template<class Type>
-		struct pointer_getter {};
+	}
 
-		template<class Type>
-		struct pointer_getter<Type*> {
-			static auto get_pointer(Type* t) {
-				return t;
-			}
-		};
+	namespace detail{
 
-		template<class Type>
-		struct pointer_getter<std::shared_ptr<Type>> {
-			template<class T>
-			static auto get_pointer(T&& t) {
-				return t.get();
-			}
-		};
-
-		template<class Type, class D>
-		struct pointer_getter<std::unique_ptr<Type,D>> {
-			template<class T>
-			static auto get_pointer(T&& t) {
-				return t.get();
-			}
-		};
 
 		template<class Class, class Matcher>
 		struct some_t{
@@ -72,23 +61,18 @@ namespace simple_match {
 
 			template<class T>
 			bool check(T&& t) {
-				auto ptr = pointer_getter<std::decay_t<T>>::get_pointer(std::forward<T>(t));
+				auto ptr = customization::pointer_getter<std::decay_t<T>>::get_pointer<Class>(std::forward<T>(t));
 				if (!ptr) {
 					return false;
 				}
-				auto casted_ptr = dynamic_cast<cv_helper<decltype(ptr),Class>>(ptr);
-				if (!casted_ptr) {
-					return false;
-				}
-				return match_check(*casted_ptr, m_);
+				return match_check(*ptr, m_);
 
 			}
 
 			template<class T>
 			auto get(T&& t) {
-				auto ptr = pointer_getter<std::decay_t<T>>::get_pointer(std::forward<T>(t));
-				auto casted_ptr = dynamic_cast<cv_helper<decltype(ptr), Class>>(pointer_getter<std::decay_t<T>>::get_pointer(std::forward<T>(t)));
-				return match_get(*casted_ptr, m_);
+				auto ptr = customization::pointer_getter<std::decay_t<T>>::get_pointer<Class>(std::forward<T>(t));
+				return match_get(*ptr, m_);
 			}
 
 
@@ -100,7 +84,9 @@ namespace simple_match {
 
 			template<class T>
 			bool check(T&& t) {
-				auto ptr = pointer_getter<std::decay_t<T>>::get_pointer(std::forward<T>(t));
+				// If you get an error here, this means that some() without a type is not supported
+				// Examples of this are variants and boost::any
+				auto ptr = customization::pointer_getter<std::decay_t<T>>::get_pointer_no_cast(std::forward<T>(t));
 				if (!ptr) {
 					return false;
 				}
@@ -110,7 +96,7 @@ namespace simple_match {
 
 			template<class T>
 			auto get(T&& t) {
-				auto ptr = (pointer_getter<std::decay_t<T>>::get_pointer(std::forward<T>(t)));
+				auto ptr = (customization::pointer_getter<std::decay_t<T>>::get_pointer_no_cast(std::forward<T>(t)));
 				return match_get(*ptr, m_);
 			}
 
@@ -122,12 +108,8 @@ namespace simple_match {
 
 			template<class T>
 			bool check(T&& t) {
-				auto ptr = pointer_getter<std::decay_t<T>>::get_pointer(std::forward<T>(t));
+				auto ptr = customization::pointer_getter<std::decay_t<T>>::get_pointer<Class>(std::forward<T>(t));
 				if (!ptr) {
-					return false;
-				}
-				auto casted_ptr = dynamic_cast<cv_helper<decltype(ptr), Class>>(ptr);
-				if (!casted_ptr) {
 					return false;
 				}
 				return true;
@@ -136,9 +118,8 @@ namespace simple_match {
 
 			template<class T>
 			auto get(T&& t) {
-				auto ptr = pointer_getter<std::decay_t<T>>::get_pointer(std::forward<T>(t));
-				auto casted_ptr = dynamic_cast<cv_helper<decltype(ptr), Class>>(ptr);
-				return std::tie(*t);
+				auto ptr = customization::pointer_getter<std::decay_t<T>>::get_pointer<Class>(std::forward<T>(t));
+				return std::tie(*ptr);
 			}
 
 
@@ -149,7 +130,9 @@ namespace simple_match {
 
 			template<class T>
 			bool check(T&& t) {
-				auto ptr = pointer_getter<std::decay_t<T>>::get_pointer(std::forward<T>(t));
+				// If you get an error here, this means that some() without a type is not supported
+				// Examples of this are variants and boost::any
+				auto ptr = customization::pointer_getter<std::decay_t<T>>::get_pointer_no_cast(std::forward<T>(t));
 				if (!ptr) {
 					return false;
 				}
@@ -159,7 +142,7 @@ namespace simple_match {
 
 			template<class T>
 			auto get(T&& t) {
-				auto casted_ptr = pointer_getter<std::decay_t<T>>::get_pointer(std::forward<T>(t));
+				auto casted_ptr = customization::pointer_getter<std::decay_t<T>>::get_pointer_no_cast(std::forward<T>(t));
 				return std::tie(*t);
 			}
 
@@ -170,7 +153,9 @@ namespace simple_match {
 		struct none_t{
 			template<class T>
 			bool check(T&& t) {
-				auto ptr = pointer_getter<std::decay_t<T>>::get_pointer(std::forward<T>(t));
+				// If you get an error here, this means that some() without a type is not supported
+				// Examples of this are variants and boost::any			
+				auto ptr = customization::pointer_getter<std::decay_t<T>>::get_pointer_no_cast(std::forward<T>(t));
 				if (!ptr) {
 					return true;
 				}
@@ -213,6 +198,46 @@ namespace simple_match {
 
 		};
 	}
+	namespace customization {
+		template<class Type>
+		struct pointer_getter<Type*> {
+			template<class To>
+			static auto get_pointer(Type* t) {
+				return dynamic_cast<utils::cv_helper<decltype(t),To>>(t);
+			}
+			static auto get_pointer_no_cast(Type* t) {
+				return t;
+			}
+		};
+
+
+		template<class Type>
+		struct pointer_getter<std::shared_ptr<Type>> {
+
+			template<class To, class T>
+			static auto get_pointer(T&& t) {
+				return dynamic_cast<utils::cv_helper<decltype(t.get()),To>(t.get());
+			}
+			template<class T>
+			static auto get_pointer_no_cast(T&& t) {
+				return t.get();
+			}
+		};
+
+		template<class Type, class D>
+		struct pointer_getter<std::unique_ptr<Type, D>> {
+			template<class To, class T>
+			static auto get_pointer(T&& t) {
+				return dynamic_cast<utils::cv_helper<decltype(t.get()),To>(t.get());
+			}
+			template<class T>
+			static auto get_pointer_no_cast(T&& t) {
+				return t.get();
+			}
+		};
+
+	}
+
 
 	inline detail::none_t none() { return detail::none_t{}; }
 
