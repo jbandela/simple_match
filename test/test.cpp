@@ -7,28 +7,15 @@
 
 
 
-
-#include "../include/simple_match/some_none.hpp"
-
 struct point {
 	int x;
 	int y;
 	point(int x_, int y_) :x(x_), y(y_) {}
 };
 
-namespace simple_match {
-	namespace customization {
-		template<>
-		struct tuple_adapter<point>{
 
-			enum { tuple_len = 2 };
-
-			template<size_t I, class T>
-			static decltype(auto) get(T&& t) {
-				return std::get<I>(std::tie(t.x,t.y));
-			}
-		};
-	}
+auto simple_match_get_tuple(const point& p) {
+	return std::tie(p.x, p.y);
 }
 
 
@@ -137,13 +124,40 @@ using sub2 = simple_match::tagged_tuple<sub_tag, any, any>;
 using mul2 = simple_match::tagged_tuple<mul_tag, any, any>;
 using neg2 = simple_match::tagged_tuple<neg_tag, any>;
 
+struct add3;
+struct sub3;
+struct neg3;
+struct mul3;
+
+using math_variant2_t = boost::variant<boost::recursive_wrapper<add3>, boost::recursive_wrapper<sub3>, boost::recursive_wrapper<neg3>, boost::recursive_wrapper<mul3>,int >;
+
+struct add3 :std::tuple<math_variant2_t, math_variant2_t> {
+	template<class... T>
+	add3(T&&...t) :tuple(std::forward<T>(t)...) {}
+};
+struct sub3 :std::tuple<math_variant2_t, math_variant2_t> {
+	template<class... T>
+	sub3(T&&...t) :tuple(std::forward<T>(t)...) {}
+};
+struct mul3 :std::tuple<math_variant2_t, math_variant2_t> {
+	template<class... T>
+	mul3(T&&...t) :tuple(std::forward<T>(t)...) {}
+};
+struct neg3 :std::tuple<math_variant2_t> {
+	template<class... T>
+	neg3(T&&...t) :tuple(std::forward<T>(t)...) {}
+};
+
+
+
+
 
 
 
 namespace simple_match {
 	namespace customization {
-		template<class... T>
-		struct pointer_getter<boost::variant<T...>> {
+		template<class... A>
+		struct pointer_getter<boost::variant<A...>> {
 			template<class To, class T>
 			static auto get_pointer(T&& t) {
 				return boost::get<To>(&t);
@@ -181,11 +195,11 @@ int eval_any(const any& m) {
 	using namespace simple_match::placeholders;
 
 	return simple_match::match(m,
-		some<add2>(ds(_x,_y)), [](auto&& a, auto&& b) {return eval_any(a) + eval_any(b);},
-		some<sub2>(ds(_x,_y)), [](auto&& a, auto&& b) {return eval_any(a) - eval_any(b);},
-		some<neg2>(ds(_x)), [](auto&& a) {return -eval_any(a);},
-		some<mul2>(ds(_x,_y)), [](auto&& a,auto&& b) {return eval_any(a) * eval_any(b);},
-		some<int>(), [](auto a) {return a;}
+		some<add2>(ds(_x,_y)), [](auto&& x, auto&& y) {return eval_any(x) + eval_any(y);},
+		some<sub2>(ds(_x,_y)), [](auto&& x, auto&& y) {return eval_any(x) - eval_any(y);},
+		some<neg2>(ds(_x)), [](auto&& x) {return -eval_any(x);},
+		some<mul2>(ds(_x,_y)), [](auto&& x,auto&& y) {return eval_any(x) * eval_any(y);},
+		some<int>(), [](auto x) {return x;}
 
 	);
 
@@ -194,12 +208,34 @@ int eval_any(const any& m) {
 }
 
 
+int eval_variant2(const math_variant2_t& m) {
+	using namespace simple_match;
+	using namespace simple_match::placeholders;
+
+	return simple_match::match(m,
+		some<add3>(ds(_x,_y)), [](auto&& x, auto&& y) {return eval_variant2(x) + eval_variant2(y);},
+		some<sub3>(ds(_x,_y)), [](auto&& x, auto&& y) {return eval_variant2(x) - eval_variant2(y);},
+		some<mul3>(ds(_x,_y)), [](auto&& x, auto&& y) {return eval_variant2(x) * eval_variant2(y);},
+		some<neg3>(ds(_x)), [](auto&& x) {return -eval_variant2(x);},
+		some<int>(), [](auto x) {return x;}
+	);
+
+
+
+}
+
 int main() {
 	math_variant_t var{ add{2,mul{3,neg{2}} } };
 	std::cout << eval_variant(var) << "\n";
 
 	any any_var{ add2{2,mul2{3,neg2{2}} } };
 	std::cout << eval_any(any_var) << "\n";
+
+	math_variant2_t var2{ add3{2,mul3{3,neg3{2}} } };
+	std::cout << eval_variant2(var2) << "\n";
+
+
+
 
 
 	test_string();

@@ -6,7 +6,6 @@
 #pragma once
 #ifndef SIMPLE_MATCH_SOME_NONE_HPP_JRB_2015_03_21
 #define SIMPLE_MATCH_SOME_NONE_HPP_JRB_2015_03_21
-#include "simple_match.hpp"
 #include <memory>
 #include <type_traits>
 
@@ -61,7 +60,7 @@ namespace simple_match {
 
 			template<class T>
 			bool check(T&& t) {
-				auto ptr = customization::pointer_getter<std::decay_t<T>>::get_pointer<Class>(std::forward<T>(t));
+				auto ptr = customization::pointer_getter<std::decay_t<T>>::template get_pointer<Class>(std::forward<T>(t));
 				if (!ptr) {
 					return false;
 				}
@@ -71,7 +70,7 @@ namespace simple_match {
 
 			template<class T>
 			auto get(T&& t) {
-				auto ptr = customization::pointer_getter<std::decay_t<T>>::get_pointer<Class>(std::forward<T>(t));
+				auto ptr = customization::pointer_getter<std::decay_t<T>>::template get_pointer<Class>(std::forward<T>(t));
 				return match_get(*ptr, m_);
 			}
 
@@ -108,7 +107,7 @@ namespace simple_match {
 
 			template<class T>
 			bool check(T&& t) {
-				auto ptr = customization::pointer_getter<std::decay_t<T>>::get_pointer<Class>(std::forward<T>(t));
+				auto ptr = customization::pointer_getter<std::decay_t<T>>::template get_pointer<Class>(std::forward<T>(t));
 				if (!ptr) {
 					return false;
 				}
@@ -118,7 +117,7 @@ namespace simple_match {
 
 			template<class T>
 			auto get(T&& t) {
-				auto ptr = customization::pointer_getter<std::decay_t<T>>::get_pointer<Class>(std::forward<T>(t));
+				auto ptr = customization::pointer_getter<std::decay_t<T>>::template get_pointer<Class>(std::forward<T>(t));
 				return std::tie(*ptr);
 			}
 
@@ -216,7 +215,7 @@ namespace simple_match {
 
 			template<class To, class T>
 			static auto get_pointer(T&& t) {
-				return dynamic_cast<utils::cv_helper<decltype(t.get()),To>(t.get());
+				return dynamic_cast<utils::cv_helper<decltype(t.get()),To>>(t.get());
 			}
 			template<class T>
 			static auto get_pointer_no_cast(T&& t) {
@@ -228,7 +227,7 @@ namespace simple_match {
 		struct pointer_getter<std::unique_ptr<Type, D>> {
 			template<class To, class T>
 			static auto get_pointer(T&& t) {
-				return dynamic_cast<utils::cv_helper<decltype(t.get()),To>(t.get());
+				return dynamic_cast<utils::cv_helper<decltype(t.get()),To>>(t.get());
 			}
 			template<class T>
 			static auto get_pointer_no_cast(T&& t) {

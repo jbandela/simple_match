@@ -240,15 +240,20 @@ namespace simple_match {
 	}
 
 	namespace customization {
+		
+		template<class... A>
+		const std::tuple<A...>& simple_match_get_tuple(const std::tuple<A...>& t) {
+			return t;
+		}
 
 		template<class Type>
 		struct tuple_adapter {
 
-			enum { tuple_len = std::tuple_size<Type>::value };
 
 			template<size_t I, class T>
 			static decltype(auto) get(T&& t) {
-				return std::get<I>(std::forward<T>(t));
+				using namespace simple_match::customization;
+				return std::get<I>(simple_match_get_tuple(std::forward<T>(t)));
 			}
 		};
 
@@ -312,7 +317,7 @@ namespace simple_match {
 
 	// tagged_tuple
 
-	template<class T, class... Args>
+	template<class Type, class... Args>
 	struct tagged_tuple {
 		template<class... A>
 		using type = std::tuple<Args...>;
@@ -323,10 +328,9 @@ namespace simple_match {
 
 
 	namespace customization {
-		template<class T, class... Args>
-		struct tuple_adapter<tagged_tuple<T,Args...>> {
+		template<class Type, class... Args>
+		struct tuple_adapter<tagged_tuple<Type,Args...>> {
 
-			enum { tuple_len = sizeof...(Args) };
 
 			template<size_t I, class T>
 			static decltype(auto) get(T&& t) {
@@ -335,6 +339,9 @@ namespace simple_match {
 		};
 	}
 }
+
+
+#include "implementation/some_none.hpp"
 
 
 
