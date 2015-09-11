@@ -315,29 +315,7 @@ namespace simple_match {
 		return std::make_tuple(std::forward<A>(a)..., detail::tuple_ignorer{});
 	}
 
-	// tagged_tuple
 
-	template<class Type, class... Args>
-	struct tagged_tuple {
-		template<class... A>
-		using type = std::tuple<Args...>;
-		std::tuple<Args...> tuple_;
-		template<class... A>
-		tagged_tuple(A&&... a) :tuple_{ std::forward<A>(a)... } {}
-	};
-
-
-	namespace customization {
-		template<class Type, class... Args>
-		struct tuple_adapter<tagged_tuple<Type,Args...>> {
-
-
-			template<size_t I, class T>
-			static decltype(auto) get(T&& t) {
-				return std::get<I>(t.tuple_);
-			}
-		};
-	}
 }
 
 

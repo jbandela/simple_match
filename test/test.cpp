@@ -5,6 +5,9 @@
 #include "../include/simple_match/simple_match.hpp"
 #include <iostream>
 
+#include "../include/simple_match/boost/any.hpp"
+#include "../include/simple_match/boost/variant.hpp"
+#include "../include/simple_match/utility.hpp"
 
 
 struct point {
@@ -33,7 +36,7 @@ void test_some_none() {
 	auto m = [](auto&& v) {
 		match(v,
 			some(5), []() {std::cout << "five\n"; },
-			some( 11 <=_x <= 20 ), [](int x) {std::cout << x << " is on the range [11,20] \n"; },
+			some(11 <= _x <= 20), [](int x) {std::cout << x << " is on the range [11,20] \n"; },
 			some(), [](int x) {std::cout << x << "\n"; },
 			none(), []() {std::cout << "Nothing\n"; }
 		);
@@ -44,8 +47,14 @@ void test_some_none() {
 	m(ten);
 	m(twelve);
 
+}
 
-	auto m2 = [](auto&& v) {
+void test_ds(){
+
+	using namespace simple_match;
+	using namespace simple_match::placeholders;
+
+	auto m = [](auto&& v) {
 		match(v,
 			some(ds(1,2)), []() {std::cout << "one,two\n"; },
 			some(ds(_x,_y)), [](int x, int y) {std::cout << x << " " << y << "\n"; },
@@ -58,9 +67,9 @@ void test_some_none() {
 	auto point_12 = std::make_unique <point>(point{ 1, 2 });
 	auto point_34 = std::make_unique <point>(point{ 3, 4 });
 
-	m2(tup_12);
-	m2(point_12);
-	m2(point_34);
+	m(tup_12);
+	m(point_12);
+	m(point_34);
 
 
 
@@ -82,7 +91,6 @@ void test_string() {
 
 }
 
-#include <boost/variant.hpp>
 
 
 struct add;
@@ -109,8 +117,8 @@ struct mul {
 };
 
 
-#include <boost/any.hpp>
-using boost::any;
+struct eval_t {};
+using eval_any = simple_match::tagged_any<eval_t>;
 
 struct add_tag {};
 struct sub_tag {};
@@ -119,10 +127,10 @@ struct neg_tag {};
 
 
 
-using add2 = simple_match::tagged_tuple<add_tag, any, any>;
-using sub2 = simple_match::tagged_tuple<sub_tag, any, any>;
-using mul2 = simple_match::tagged_tuple<mul_tag, any, any>;
-using neg2 = simple_match::tagged_tuple<neg_tag, any>;
+using add2 = simple_match::tagged_tuple<add_tag, eval_any, eval_any>;
+using sub2 = simple_match::tagged_tuple<sub_tag, eval_any, eval_any>;
+using mul2 = simple_match::tagged_tuple<mul_tag, eval_any, eval_any>;
+using neg2 = simple_match::tagged_tuple<neg_tag, eval_any>;
 
 struct add3;
 struct sub3;
@@ -149,39 +157,14 @@ struct neg3 :std::tuple<math_variant2_t> {
 };
 
 
-
-
-
-
-
-namespace simple_match {
-	namespace customization {
-		template<class... A>
-		struct pointer_getter<boost::variant<A...>> {
-			template<class To, class T>
-			static auto get_pointer(T&& t) {
-				return boost::get<To>(&t);
-			}
-		};
-		template<>
-		struct pointer_getter<boost::any> {
-			template<class To, class T>
-			static auto get_pointer(T&& t) {
-				return boost::any_cast<To>(&t);
-			}
-		};
-	}
-
-}
-
-int eval_variant(const math_variant_t& m) {
+int eval(const math_variant_t& m) {
 	using namespace simple_match;
 
 	return simple_match::match(m,
-		some<add>(), [](auto&& a) {return eval_variant(a.left) + eval_variant(a.right);},
-		some<sub>(), [](auto&& a) {return eval_variant(a.left) - eval_variant(a.right);},
-		some<neg>(), [](auto&& a) {return -eval_variant(a.value);},
-		some<mul>(), [](auto&& a) {return eval_variant(a.left) * eval_variant(a.right);},
+		some<add>(), [](auto&& a) {return eval(a.left) + eval(a.right);},
+		some<sub>(), [](auto&& a) {return eval(a.left) - eval(a.right);},
+		some<neg>(), [](auto&& a) {return -eval(a.value);},
+		some<mul>(), [](auto&& a) {return eval(a.left) * eval(a.right);},
 		some<int>(), [](auto a) {return a;}
 
 		);
@@ -190,15 +173,15 @@ int eval_variant(const math_variant_t& m) {
 
 }
 
-int eval_any(const any& m) {
+int eval(const eval_any& m) {
 	using namespace simple_match;
 	using namespace simple_match::placeholders;
 
 	return simple_match::match(m,
-		some<add2>(ds(_x,_y)), [](auto&& x, auto&& y) {return eval_any(x) + eval_any(y);},
-		some<sub2>(ds(_x,_y)), [](auto&& x, auto&& y) {return eval_any(x) - eval_any(y);},
-		some<neg2>(ds(_x)), [](auto&& x) {return -eval_any(x);},
-		some<mul2>(ds(_x,_y)), [](auto&& x,auto&& y) {return eval_any(x) * eval_any(y);},
+		some<add2>(ds(_x,_y)), [](auto&& x, auto&& y) {return eval(x) + eval(y);},
+		some<sub2>(ds(_x,_y)), [](auto&& x, auto&& y) {return eval(x) - eval(y);},
+		some<neg2>(ds(_x)), [](auto&& x) {return -eval(x);},
+		some<mul2>(ds(_x,_y)), [](auto&& x,auto&& y) {return eval(x) * eval(y);},
 		some<int>(), [](auto x) {return x;}
 
 	);
@@ -208,46 +191,88 @@ int eval_any(const any& m) {
 }
 
 
-int eval_variant2(const math_variant2_t& m) {
+int eval(const math_variant2_t& m) {
 	using namespace simple_match;
 	using namespace simple_match::placeholders;
 
 	return simple_match::match(m,
-		some<add3>(ds(_x,_y)), [](auto&& x, auto&& y) {return eval_variant2(x) + eval_variant2(y);},
-		some<sub3>(ds(_x,_y)), [](auto&& x, auto&& y) {return eval_variant2(x) - eval_variant2(y);},
-		some<mul3>(ds(_x,_y)), [](auto&& x, auto&& y) {return eval_variant2(x) * eval_variant2(y);},
-		some<neg3>(ds(_x)), [](auto&& x) {return -eval_variant2(x);},
+		some<add3>(ds(_x,_y)), [](auto&& x, auto&& y) {return eval(x) + eval(y);},
+		some<sub3>(ds(_x,_y)), [](auto&& x, auto&& y) {return eval(x) - eval(y);},
+		some<mul3>(ds(_x,_y)), [](auto&& x, auto&& y) {return eval(x) * eval(y);},
+		some<neg3>(ds(_x)), [](auto&& x) {return -eval(x);},
 		some<int>(), [](auto x) {return x;}
 	);
 
 
 
 }
+
+
+struct eval_base_t { virtual ~eval_base_t() {} };
+struct int_holder_tag {};
+
+
+using add4 = simple_match::inheriting_tagged_tuple<eval_base_t,add_tag, std::unique_ptr<eval_base_t>, std::unique_ptr<eval_base_t>>;
+using sub4 = simple_match::inheriting_tagged_tuple<eval_base_t,sub_tag, std::unique_ptr<eval_base_t>, std::unique_ptr<eval_base_t>>;
+using mul4 = simple_match::inheriting_tagged_tuple<eval_base_t,mul_tag, std::unique_ptr<eval_base_t>, std::unique_ptr<eval_base_t>>;
+using neg4 = simple_match::inheriting_tagged_tuple<eval_base_t,neg_tag, std::unique_ptr<eval_base_t>>;
+using int_holder = simple_match::inheriting_tagged_tuple<eval_base_t,int_holder_tag, int>;
+
+
+
+
+
+int eval(const std::unique_ptr<eval_base_t>& m) {
+	using namespace simple_match;
+	using namespace simple_match::placeholders;
+
+	return simple_match::match(m,
+		some<add4>(ds(_x, _y)), [](auto&& x, auto&& y) {return eval(x) + eval(y);},
+		some<sub4>(ds(_x, _y)), [](auto&& x, auto&& y) {return eval(x) - eval(y);},
+		some<mul4>(ds(_x, _y)), [](auto&& x, auto&& y) {return eval(x) * eval(y);},
+		some<neg4>(ds(_x)), [](auto&& x) {return -eval(x);},
+		some<int_holder>(ds(_x)), [](auto x) {return x;}
+	);
+
+
+
+}
+
+
 
 int main() {
 	math_variant_t var{ add{2,mul{3,neg{2}} } };
-	std::cout << eval_variant(var) << "\n";
+	std::cout << eval(var) << "\n";
 
-	any any_var{ add2{2,mul2{3,neg2{2}} } };
-	std::cout << eval_any(any_var) << "\n";
+	eval_any any_var{ add2{2,mul2{3,neg2{2}} } };
+	std::cout << eval(any_var) << "\n";
 
 	math_variant2_t var2{ add3{2,mul3{3,neg3{2}} } };
-	std::cout << eval_variant2(var2) << "\n";
+	std::cout << eval(var2) << "\n";
+
+	std::unique_ptr<eval_base_t> eval_base = std::make_unique<add4>(
+		std::make_unique<int_holder>(2),
+		std::make_unique<mul4>(
+			std::make_unique<int_holder>(3),
+			std::make_unique<neg4>(std::make_unique<int_holder>(2))));
 
 
 
+	std::cout << eval(eval_base) << "\n";
 
 
 	test_string();
 	test_some_none();
+	test_ds();
 
 	using namespace simple_match;
 	using namespace simple_match::placeholders;
 
 	int x = 0;
 
-	while (true) {
-		std::cin >> x;
+	int xs[] = { 1,2,4,15,20,21 };
+
+	for (auto x:xs) {
 		match(x,
 			1, []() {std::cout << "The answer is one\n"; },
 			2, []() {std::cout << "The answer is two\n"; },
