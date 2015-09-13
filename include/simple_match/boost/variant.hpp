@@ -10,6 +10,62 @@
 #include <boost/variant.hpp>
 #include "../simple_match.hpp"
 namespace simple_match {
+		namespace detail {
+			template<class Variant>
+			struct extract_variant_types{};
+
+			template<class T>
+			struct extract_single_type {
+				using type = std::tuple<T>;
+			};
+
+			template<class T>
+			struct extract_single_type<boost::recursive_wrapper<T>> {
+				using type = std::tuple<T>;
+			};
+
+			// NB: dependence on boost::variant implementation detail
+			template<>
+			struct extract_single_type<boost::detail::variant::void_> {
+				using type = std::tuple<>;
+			};
+
+
+
+			template<class... T>
+			struct extract_variant_types_helper {
+			};
+
+			template<class First, class... Rest>
+			struct extract_variant_types_helper<First, Rest...> {
+				using type = cat_tuple_t<typename extract_single_type<First>::type, typename extract_variant_types_helper<Rest...>::type>;
+			};
+
+			template<>
+			struct extract_variant_types_helper<> {
+				using type = std::tuple<>;
+			};
+
+			template<class Tuple>
+			struct some_exhaustiveness_variant_generator {};
+
+			template<class... T>
+			struct some_exhaustiveness_variant_generator<std::tuple<T...>> {
+				using type = some_exhaustiveness<T...>;
+
+			};
+
+			template<class... T>
+			struct extract_variant_types<boost::variant<T...>> {
+				using type = typename extract_variant_types_helper<T...>::type;
+
+			};
+
+
+
+
+		}
+
 	namespace customization {
 		template<class... A>
 		struct pointer_getter<boost::variant<A...>> {
@@ -18,6 +74,16 @@ namespace simple_match {
 				return boost::get<To>(&t);
 			}
 		};
+
+
+		template<class... T>
+		struct exhaustiveness_checker<boost::variant<T...>> {
+			using vtypes = typename detail::extract_variant_types<boost::variant<T...>>::type;
+			using sevg = typename detail::some_exhaustiveness_variant_generator<vtypes>::type;
+			template<class ArgTypes>
+			using type = typename sevg::template type<ArgTypes>;
+		};
+
 	}
 
 }
