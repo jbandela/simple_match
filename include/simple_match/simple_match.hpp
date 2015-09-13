@@ -35,6 +35,61 @@ namespace simple_match {
 
 	}
 
+	// exhaustiveness
+	namespace detail {
+		template<class TA, class TB>
+		struct cat_tuple {};
+
+		template<class... A, class... B>
+		struct cat_tuple<std::tuple<A...>,std::tuple<B...>> {
+			using type = std::tuple<A..., B...>;
+
+		};
+
+		template<class TA, class TB>
+		using cat_tuple_t = typename cat_tuple<TA, TB>::type;
+
+		template<class... A>
+		struct arg_types {
+
+		};
+
+		template<class A, class F>
+		struct arg_types<A,F> {
+			using type = std::tuple<A>;
+		};
+
+
+		template<class A1, class F1, class A2, class F2, class... Args>
+		struct arg_types<A1, F1, A2, F2, Args...>{
+			using type = cat_tuple_t<std::tuple<A1, A2>, typename arg_types<Args...>::type>;
+
+		};
+
+		template<>
+		struct arg_types<>{
+			using type = std::tuple<>;
+
+		};
+
+
+	}
+	struct empty_exhaustiveness {
+		template<class ArgTypes>
+		struct type{
+			static const bool value = true;
+		};
+	};
+	namespace customization {
+
+		template<class T>
+		struct exhaustiveness_checker {
+			template<class ArgTypes>
+			using type = empty_exhaustiveness::template type<ArgTypes>;
+		};
+	}
+
+	// end exhaustiveness
 
 	template<class T, class U>
 	bool match_check(T&& t, U&& u) {
@@ -51,25 +106,38 @@ namespace simple_match {
 		return m::get(std::forward<T>(t), std::forward<U>(u));
 	}
 
-	template<class T, class A1, class F1>
-	auto match(T&& t, A1&& a, F1&& f) {
-		if (match_check(std::forward<T>(t), std::forward<A1>(a))) {
-			return detail::apply(f, match_get(std::forward<T>(t), std::forward<A1>(a)));
+
+	namespace detail {
+
+		template<class T, class A1, class F1>
+		auto match(T&& t, A1&& a, F1&& f) {
+			if (match_check(std::forward<T>(t), std::forward<A1>(a))) {
+				return detail::apply(f, match_get(std::forward<T>(t), std::forward<A1>(a)));
+			}
+			else {
+				throw std::logic_error("No match");
+			}
 		}
-		else {
-			throw std::logic_error("No match");
+
+
+		template<class T, class A1, class F1, class A2, class F2, class... Args>
+		auto match(T&& t, A1&& a, F1&& f, A2&& a2, F2&& f2, Args&&... args) {
+			if (match_check(t, a)) {
+				return detail::apply(f, match_get(std::forward<T>(t), std::forward<A1>(a)));
+			}
+			else {
+				return match(t, std::forward<A2>(a2), std::forward<F2>(f2), std::forward<Args>(args)...);
+			}
 		}
+
 	}
 
-
-	template<class T, class A1, class F1, class A2, class F2, class... Args>
-	auto match(T&& t, A1&& a, F1&& f, A2&& a2, F2&& f2, Args&&... args) {
-		if (match_check(t, a)) {
-			return detail::apply(f, match_get(std::forward<T>(t), std::forward<A1>(a)));
-		}
-		else {
-			return match(t, std::forward<A2>(a2), std::forward<F2>(f2), std::forward<Args>(args)...);
-		}
+	template<class T, class... Args>
+	auto match(T&& t, Args&&... a) {
+		using atypes = typename detail::arg_types<Args...>::type;
+		using ctypes =  typename customization::exhaustiveness_checker<std::decay_t<T>>::template type<atypes>;
+		static_assert(ctypes::value, "Not all types are tested for in match");
+		return detail::match(std::forward<T>(t), std::forward<Args>(a)...);
 	}
 
 

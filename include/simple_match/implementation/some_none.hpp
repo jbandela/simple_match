@@ -253,6 +253,108 @@ namespace simple_match {
 	detail::some_t<Class, void> some() {
 		return detail::some_t<Class, void>{ };
 	}
+
+
+	// exhaustiveness
+
+	namespace detail {
+
+		template<class T, class Tuple>
+		struct type_in_tuple {
+			static const bool value = false;
+		};
+		template<class T, class First, class... Rest>
+		struct type_in_tuple<T, std::tuple<First, Rest...>> {
+			static const bool value = type_in_tuple<T, std::tuple<Rest...>>::value;
+		};
+		template<class T, class... Rest>
+		struct type_in_tuple<T, std::tuple<T, Rest...>> {
+			static const bool value = true;
+		};
+		template<class T>
+		struct type_in_tuple<T, std::tuple<>> {
+			static const bool value = false;
+		};
+
+		template<class ArgTypes>
+		struct has_otherwise {
+			static const bool value = type_in_tuple<otherwise_t, ArgTypes>::value;
+		};
+
+		template<bool, class ArgTypes,class... RequiredTypes>
+		struct some_exhaustiveness_helper {
+			static const bool value = true;
+		};
+
+		template<class Tuple>
+		struct get_some_classes {};
+
+		template<>
+		struct get_some_classes<std::tuple<>> {
+			using type = std::tuple<>;
+		};
+
+		template<class First, class...Rest>
+		struct get_some_classes<std::tuple<First, Rest...>> {
+			using type = typename get_some_classes<std::tuple<Rest...>>::type;
+
+		};
+		template<class Class, class Matcher, class...Rest>
+		struct get_some_classes<std::tuple<some_t<Class,Matcher>, Rest...>> {
+			using type = cat_tuple_t<std::tuple<Class>, typename get_some_classes<std::tuple<Rest...>>::type>;
+
+		};
+
+		template<class SomeClasses, class... Required>
+		struct all_in {};
+
+		template<bool b, class Type>
+		struct not_in_match_asserter {
+			static const bool value = b;
+			static_assert(value, "This classes is not in the match");
+		};
+
+		template<class SomeClasses, class First, class... Rest>
+		struct all_in<SomeClasses,First,Rest...> {
+			static const bool myvalue = type_in_tuple<First, SomeClasses>::value;
+			static const bool value = not_in_match_asserter<myvalue, First>::value&& all_in<SomeClasses, Rest...>::value;
+
+		};
+		template<class SomeClasses, class First>
+		struct all_in<SomeClasses,First> {
+			static const bool myvalue = type_in_tuple<First, SomeClasses>::value;
+//			static_assert(type_in_tuple<First, SomeClasses>::value, "This classes is not in the match");
+			static const bool value = not_in_match_asserter<myvalue, First>::value;
+
+		};
+
+
+
+		template<class ArgTypes, class... RequiredTypes>
+		struct some_exhaustiveness_helper<false,ArgTypes,RequiredTypes...> {
+			using some_classes = typename get_some_classes<ArgTypes>::type;
+			using a = all_in<some_classes, RequiredTypes...>;
+			static const bool value = a::value;
+		
+		
+		};
+
+
+
+
+
+
+	}
+
+	template<class... Types>
+	struct some_exhaustiveness {
+		template<class ArgTypes>
+		struct type {
+			static const bool v = detail::has_otherwise<ArgTypes>::value;
+			using seh = detail::some_exhaustiveness_helper<v, ArgTypes, Types...>;
+			static const bool value = seh::value;
+		};
+	};
 }
 
 

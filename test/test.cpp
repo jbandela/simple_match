@@ -172,6 +172,16 @@ int eval(const math_variant_t& m) {
 
 
 }
+namespace simple_match {
+	namespace customization {
+
+		template<>
+		struct exhaustiveness_checker<eval_any> {
+			template<class ArgTypes>
+			using type = some_exhaustiveness<add2,sub2,mul2,neg2,int>::template type<ArgTypes>;
+		};
+	}
+}
 
 int eval(const eval_any& m) {
 	using namespace simple_match;
@@ -238,9 +248,9 @@ int eval(const std::unique_ptr<eval_base_t>& m) {
 
 }
 
-
-
 int main() {
+
+
 	math_variant_t var{ add{2,mul{3,neg{2}} } };
 	std::cout << eval(var) << "\n";
 

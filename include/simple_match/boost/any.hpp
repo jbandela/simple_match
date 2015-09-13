@@ -27,8 +27,8 @@ namespace simple_match {
 				return boost::any_cast<To>(&t);
 			}
 		};
-		template<class T>
-		struct pointer_getter<tagged_any<T>> {
+		template<class Type>
+		struct pointer_getter<tagged_any<Type>> {
 			template<class To, class T>
 			static auto get_pointer(T&& t) {
 				return boost::any_cast<To>(&t);
