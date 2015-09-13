@@ -311,7 +311,7 @@ namespace simple_match {
 		template<bool b, class Type>
 		struct not_in_match_asserter {
 			static const bool value = b;
-			static_assert(value, "This classes is not in the match");
+			static_assert(value, "This type is not in the match");
 		};
 
 		template<class SomeClasses, class First, class... Rest>
