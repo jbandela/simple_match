@@ -56,13 +56,13 @@ namespace simple_match {
 
 		template<class A, class F>
 		struct arg_types<A,F> {
-			using type = std::tuple<A>;
+			using type = std::tuple<std::decay_t<A>>;
 		};
 
 
 		template<class A1, class F1, class A2, class F2, class... Args>
 		struct arg_types<A1, F1, A2, F2, Args...>{
-			using type = cat_tuple_t<std::tuple<A1, A2>, typename arg_types<Args...>::type>;
+			using type = cat_tuple_t<std::tuple<std::decay_t<A1>, std::decay_t<A2>>, typename arg_types<Args...>::type>;
 
 		};
 

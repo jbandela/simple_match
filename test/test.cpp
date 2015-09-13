@@ -159,6 +159,7 @@ struct neg3 :std::tuple<math_variant2_t> {
 
 int eval(const math_variant_t& m) {
 	using namespace simple_match;
+	using namespace simple_match::placeholders;
 
 	return simple_match::match(m,
 		some<add>(), [](auto&& a) {return eval(a.left) + eval(a.right);},
