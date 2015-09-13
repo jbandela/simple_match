@@ -177,8 +177,7 @@ namespace simple_match {
 
 		template<>
 		struct exhaustiveness_checker<eval_any> {
-			template<class ArgTypes>
-			using type = some_exhaustiveness<add2,sub2,mul2,neg2,int>::template type<ArgTypes>;
+			using type = some_exhaustiveness<add2,sub2,mul2,neg2,int>;
 		};
 	}
 }
@@ -229,6 +228,15 @@ using neg4 = simple_match::inheriting_tagged_tuple<eval_base_t,neg_tag, std::uni
 using int_holder = simple_match::inheriting_tagged_tuple<eval_base_t,int_holder_tag, int>;
 
 
+namespace simple_match {
+	namespace customization {
+
+		template<>
+		struct exhaustiveness_checker<std::unique_ptr<eval_base_t>> {
+			using type = some_exhaustiveness<add4, sub4, mul4, neg4, int_holder>;
+		};
+	}
+}
 
 
 

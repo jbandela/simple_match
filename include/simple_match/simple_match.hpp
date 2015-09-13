@@ -84,8 +84,7 @@ namespace simple_match {
 
 		template<class T>
 		struct exhaustiveness_checker {
-			template<class ArgTypes>
-			using type = empty_exhaustiveness::template type<ArgTypes>;
+			using type = empty_exhaustiveness;
 		};
 	}
 
@@ -135,7 +134,8 @@ namespace simple_match {
 	template<class T, class... Args>
 	auto match(T&& t, Args&&... a) {
 		using atypes = typename detail::arg_types<Args...>::type;
-		using ctypes =  typename customization::exhaustiveness_checker<std::decay_t<T>>::template type<atypes>;
+		using ec = typename customization::exhaustiveness_checker<std::decay_t<T>>::type;
+		using ctypes = typename ec::template type<atypes>;
 		static_assert(ctypes::value, "Not all types are tested for in match");
 		return detail::match(std::forward<T>(t), std::forward<Args>(a)...);
 	}

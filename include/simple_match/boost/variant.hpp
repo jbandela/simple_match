@@ -79,9 +79,7 @@ namespace simple_match {
 		template<class... T>
 		struct exhaustiveness_checker<boost::variant<T...>> {
 			using vtypes = typename detail::extract_variant_types<boost::variant<T...>>::type;
-			using sevg = typename detail::some_exhaustiveness_variant_generator<vtypes>::type;
-			template<class ArgTypes>
-			using type = typename sevg::template type<ArgTypes>;
+			using type = typename detail::some_exhaustiveness_variant_generator<vtypes>::type;
 		};
 
 	}
