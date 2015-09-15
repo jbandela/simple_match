@@ -257,7 +257,219 @@ int eval(const std::unique_ptr<eval_base_t>& m) {
 
 }
 
+void FizzBuzz() {
+
+	using namespace simple_match;
+	using namespace simple_match::placeholders;
+	for (int i = 1; i <= 100; ++i) {
+		match(std::make_tuple(i%3 == 0,i%5 == 0),
+			ds(true, true ), []() {std::cout << "FizzBuzz\n";},
+			ds(true, _), []() {std::cout << "Fizz\n";},
+			ds(_, true), []() {std::cout << "Buzz\n";},
+			_, [i]() {std::cout << i << "\n";}
+		);
+	}
+}
+
+
+
+// Adapted from https://github.com/solodon4/Mach7/blob/master/code/test/unit/cppcon-matching.cpp
+
+struct BoolExp { virtual ~BoolExp() {} };
+
+struct VarExpTag {};
+struct ValExpTag {};
+struct NotExpTag {};
+struct AndExpTag {};
+struct OrExpTag {};
+
+using VarExp = simple_match::inheriting_tagged_tuple<BoolExp, VarExpTag, std::string>; 
+using ValExp = simple_match::inheriting_tagged_tuple<BoolExp, ValExpTag, bool>; 
+using NotExp = simple_match::inheriting_tagged_tuple<BoolExp, NotExpTag, std::unique_ptr<BoolExp>>; 
+using AndExp = simple_match::inheriting_tagged_tuple<BoolExp, AndExpTag, std::unique_ptr<BoolExp>,std::unique_ptr<BoolExp>>; 
+using OrExp = simple_match::inheriting_tagged_tuple<BoolExp, OrExpTag, std::unique_ptr<BoolExp>,std::unique_ptr<BoolExp>>; 
+
+
+template<class T, class... A>
+std::unique_ptr<BoolExp> make_bool_exp(A&&... a) {
+	return std::make_unique<T>(std::forward<A>(a)...);
+}
+
+void print(const std::unique_ptr<BoolExp>& exp)
+{
+	using namespace simple_match;
+	using namespace simple_match::placeholders;
+
+	match(exp,
+		some<VarExp>(ds(_x)), [](auto& x) {std::cout << x;},
+		some<ValExp>(ds(_x)), [](auto& x) {std::cout << x;},
+		some<NotExp>(ds(_x)), [](auto& x) {std::cout << '!'; print(x);},
+		some<AndExp>(ds(_x, _y)), [](auto& x, auto& y) {std::cout << '('; print(x);std::cout << " & "; print(y); std::cout << ')';},
+		some<OrExp>(ds(_x, _y)), [](auto& x, auto& y) {std::cout << '('; print(x);std::cout << " | "; print(y); std::cout << ')';}
+	);
+
+
+}
+
+
+std::unique_ptr<BoolExp> copy(const std::unique_ptr<BoolExp>& exp)
+{	
+	using namespace simple_match;
+	using namespace simple_match::placeholders;
+
+
+	
+	return match(exp,
+		some<VarExp>(ds(_x)), [](auto& x) {return make_bool_exp<VarExp>(x);},
+		some<ValExp>(ds(_x)), [](auto& x) {return make_bool_exp<ValExp>(x);},
+		some<NotExp>(ds(_x)), [](auto& x) {return make_bool_exp<NotExp>(copy(x));},
+		some<AndExp>(ds(_x,_y)), [](auto& x, auto& y) {return make_bool_exp<AndExp>(copy(x),copy(y));},
+		some<OrExp>(ds(_x,_y)), [](auto& x, auto& y) {return make_bool_exp<OrExp>(copy(x),copy(y));}
+	);
+
+}
+
+#include <map>
+
+template <class K, class T, class C, class A>
+std::ostream& operator<<(std::ostream& os, const std::map<K, T, C, A>& m)
+{
+	for (auto&& p:m)
+	{
+		os << p.first << '=' << p.second << std::endl;
+	}
+
+	return os;
+}
+typedef std::map<std::string, bool> Context;
+
+bool eval(Context& ctx, const std::unique_ptr<BoolExp>& exp)
+{
+	using namespace simple_match;
+	using namespace simple_match::placeholders;
+
+	return match(exp,
+		some<VarExp>(ds(_x)), [&](auto& x)mutable {return ctx[x];},
+		some<ValExp>(ds(_x)), [](auto& x) {return x;},
+		some<NotExp>(ds(_x)), [&](auto& x)mutable {return !eval(ctx,x);},
+		some<AndExp>(ds(_x, _y)), [&](auto& x, auto& y)mutable {return eval(ctx,x) && eval(ctx,y);},
+		some<OrExp>(ds(_x, _y)), [&](auto& x, auto& y)mutable {return eval(ctx,x) || eval(ctx,y);}
+	);
+
+}
+
+std::unique_ptr<BoolExp> replace(const std::unique_ptr<BoolExp>& where, const std::string& what, const std::unique_ptr<BoolExp>& with)
+{
+	using namespace simple_match;
+	using namespace simple_match::placeholders;
+
+	return match(where,
+		some<VarExp>(ds(_x)), [&](auto& x){
+			if (what == x) {
+				return copy(with);
+			}
+			else {
+				return make_bool_exp<VarExp>(x);
+			}
+		},
+		some<ValExp>(), [&](auto& x) {return copy(where);},
+		some<NotExp>(ds(_x)), [&](auto& x) {return make_bool_exp<NotExp>(replace(x,what,with));},
+		some<AndExp>(ds(_x,_y)), [&](auto& x, auto& y) {return make_bool_exp<AndExp>(replace(x,what,with), replace(y,what,with));},
+		some<OrExp>(ds(_x,_y)), [&](auto& x, auto& y) {return make_bool_exp<OrExp>(replace(x,what,with), replace(y,what,with));}
+	);
+
+}
+bool equal(const std::unique_ptr<BoolExp>& x1, const std::unique_ptr<BoolExp>& x2)
+{
+	using namespace simple_match;
+	using namespace simple_match::placeholders;
+
+	return match(std::tie(x1, x2),
+		ds(some<VarExp>(ds(_x)), some<VarExp>(ds(_y))), [](auto& x, auto& y) {return x == y;},
+		ds(some<ValExp>(ds(_x)), some<ValExp>(ds(_y))), [](auto& x, auto& y) {return x == y;},
+		ds(some<NotExp>(ds(_x)), some<NotExp>(ds(_y))), [](auto& x, auto& y) {return equal(x,y);},
+		ds(some<AndExp>(ds(_w,_x)), some<AndExp>(ds(_y,_z))), [](auto& w, auto& x, auto& y, auto& z) {return equal(w,y) && equal(x,z);},
+		ds(some<OrExp>(ds(_w,_x)), some<OrExp>(ds(_y,_z))), [](auto& w, auto& x, auto& y, auto& z) {return equal(w,y) && equal(x,z);},
+		_, []() {return false;}
+
+
+
+		);
+
+	
+}
+
+typedef std::map<std::string, std::unique_ptr<BoolExp>> Assignments;
+
+// Other example: unify
+bool exp_match(const std::unique_ptr<BoolExp>& p, const std::unique_ptr<BoolExp>& x, Assignments& ctx)
+{
+	using namespace simple_match;
+	using namespace simple_match::placeholders;
+
+	return match(std::tie(p, x),
+		ds(some<VarExp>(ds(_x)), _), [&](auto& name)mutable {
+			if (!ctx[name]) { ctx[name] = copy(x);return true; }
+			else { return equal(ctx[name], x); }
+		},
+		ds(some<ValExp>(ds(_x)), some<ValExp>(ds(_y))), [&](auto& x, auto& y)mutable {return x == y;},
+		ds(some<NotExp>(ds(_x)), some<NotExp>(ds(_y))), [&](auto& x, auto& y)mutable {return exp_match(x, y,ctx);},
+		ds(some<AndExp>(ds(_w, _x)), some<AndExp>(ds(_y, _z))), [&](auto& w, auto& x, auto& y, auto& z)mutable {return exp_match(w, y,ctx) && exp_match(x, z,ctx);},
+		ds(some<OrExp>(ds(_w, _x)), some<OrExp>(ds(_y, _z))), [&](auto& w, auto& x, auto& y, auto& z)mutable {return exp_match(w, y,ctx )&& exp_match(x, z,ctx);},
+		_, []() {return false;}
+
+
+
+	);
+
+}
+void TestBoolExp() {
+
+	std::unique_ptr<BoolExp> exp1 = std::make_unique<AndExp>( 
+		std::make_unique<OrExp>(std::make_unique<VarExp>("X"), std::make_unique<VarExp>("Y")), 
+		std::make_unique<NotExp>(std::make_unique<VarExp>("Z")));
+
+
+	std::cout << "exp1 = "; print(exp1); std::cout << std::endl;
+
+	auto exp2 = copy(exp1);
+
+	std::cout << "exp2 = "; print(exp2); std::cout << std::endl;
+
+	auto exp3 = replace(exp1, "Z", exp2);
+
+	std::cout << "exp3 = "; print(exp3); std::cout << std::endl;
+
+	std::cout << (equal(exp1, exp2) ? "exp1 == exp2" : "exp1 <> exp2") << std::endl;
+
+	Context ctx;
+	ctx["Y"] = true;
+	std::cout << eval(ctx, exp1) << std::endl;
+	std::cout << eval(ctx, exp2) << std::endl;
+	std::cout << eval(ctx, exp3) << std::endl;
+
+	std::cout << ctx << std::endl;
+
+	Assignments ctx2;
+
+	if (exp_match(exp2, exp3, ctx2))
+	{
+		std::cout << "exp2 matches exp3 with assignments: " << std::endl;
+
+		for (Assignments::const_iterator p = ctx2.begin(); p != ctx2.end(); ++p)
+		{
+			std::cout << p->first << '='; print(p->second); std::cout << std::endl;
+		}
+	}
+}
+
+
+
+
 int main() {
+
+
+	FizzBuzz();
 
 
 	math_variant_t var{ add{2,mul{3,neg{2}} } };
@@ -304,5 +516,7 @@ int main() {
 
 	}
 
+
+	TestBoolExp();
 
 }
