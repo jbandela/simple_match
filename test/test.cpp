@@ -289,11 +289,23 @@ using NotExp = simple_match::inheriting_tagged_tuple<BoolExp, NotExpTag, std::un
 using AndExp = simple_match::inheriting_tagged_tuple<BoolExp, AndExpTag, std::unique_ptr<BoolExp>,std::unique_ptr<BoolExp>>; 
 using OrExp = simple_match::inheriting_tagged_tuple<BoolExp, OrExpTag, std::unique_ptr<BoolExp>,std::unique_ptr<BoolExp>>; 
 
+namespace simple_match {
+	namespace customization {
+
+		template<class D>
+		struct exhaustiveness_checker<std::unique_ptr<BoolExp,D>> {
+			using type = some_exhaustiveness<VarExp, ValExp, NotExp, AndExp, OrExp>;
+		};
+	}
+}
 
 template<class T, class... A>
 std::unique_ptr<BoolExp> make_bool_exp(A&&... a) {
 	return std::make_unique<T>(std::forward<A>(a)...);
 }
+
+
+
 
 void print(const std::unique_ptr<BoolExp>& exp)
 {

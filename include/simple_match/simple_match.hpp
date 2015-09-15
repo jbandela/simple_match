@@ -109,7 +109,7 @@ namespace simple_match {
 	namespace detail {
 
 		template<class T, class A1, class F1>
-		auto match(T&& t, A1&& a, F1&& f) {
+		auto match_helper(T&& t, A1&& a, F1&& f) {
 			if (match_check(std::forward<T>(t), std::forward<A1>(a))) {
 				return detail::apply(f, match_get(std::forward<T>(t), std::forward<A1>(a)));
 			}
@@ -120,12 +120,12 @@ namespace simple_match {
 
 
 		template<class T, class A1, class F1, class A2, class F2, class... Args>
-		auto match(T&& t, A1&& a, F1&& f, A2&& a2, F2&& f2, Args&&... args) {
+		auto match_helper(T&& t, A1&& a, F1&& f, A2&& a2, F2&& f2, Args&&... args) {
 			if (match_check(t, a)) {
 				return detail::apply(f, match_get(std::forward<T>(t), std::forward<A1>(a)));
 			}
 			else {
-				return match(t, std::forward<A2>(a2), std::forward<F2>(f2), std::forward<Args>(args)...);
+				return match_helper(t, std::forward<A2>(a2), std::forward<F2>(f2), std::forward<Args>(args)...);
 			}
 		}
 
@@ -137,7 +137,7 @@ namespace simple_match {
 		using ec = typename customization::exhaustiveness_checker<std::decay_t<T>>::type;
 		using ctypes = typename ec::template type<atypes>;
 		static_assert(ctypes::value, "Not all types are tested for in match");
-		return detail::match(std::forward<T>(t), std::forward<Args>(a)...);
+		return detail::match_helper(std::forward<T>(t), std::forward<Args>(a)...);
 	}
 
 
