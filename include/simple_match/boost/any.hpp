@@ -34,6 +34,10 @@ namespace simple_match {
 				return boost::any_cast<To>(&t);
 			}
 		};
+		template<class T>
+		static auto is_null(T&& t) {
+			return t.empty();
+		}
 
 
 	}

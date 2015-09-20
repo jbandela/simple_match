@@ -141,8 +141,8 @@ namespace simple_match {
 
 			template<class T>
 			auto get(T&& t) {
-				auto casted_ptr = customization::pointer_getter<std::decay_t<T>>::get_pointer_no_cast(std::forward<T>(t));
-				return std::tie(*t);
+				auto ptr = customization::pointer_getter<std::decay_t<T>>::get_pointer_no_cast(std::forward<T>(t));
+				return std::tie(*ptr);
 			}
 
 
@@ -152,14 +152,9 @@ namespace simple_match {
 		struct none_t{
 			template<class T>
 			bool check(T&& t) {
-				// If you get an error here, this means that some() without a type is not supported
-				// Examples of this are variants and boost::any			
-				auto ptr = customization::pointer_getter<std::decay_t<T>>::get_pointer_no_cast(std::forward<T>(t));
-				if (!ptr) {
-					return true;
-				}
-				return false;
-
+				// If you get an error here, this means that none() is not supported
+				// Example is boost::variant which has a never empty guarantee
+				return customization::pointer_getter<std::decay_t<T>>::is_null(std::forward<T>(t));
 			}
 
 			template<class T>
@@ -207,6 +202,9 @@ namespace simple_match {
 			static auto get_pointer_no_cast(Type* t) {
 				return t;
 			}
+			static auto is_null(Type* t) {
+				return !t;
+			}
 		};
 
 
@@ -221,6 +219,10 @@ namespace simple_match {
 			static auto get_pointer_no_cast(T&& t) {
 				return t.get();
 			}
+			template<class T>
+			static auto is_null(T&& t) {
+				return !t;
+			}
 		};
 
 		template<class Type, class D>
@@ -232,6 +234,10 @@ namespace simple_match {
 			template<class T>
 			static auto get_pointer_no_cast(T&& t) {
 				return t.get();
+			}
+			template<class T>
+			static auto is_null(T&& t) {
+				return !t;
 			}
 		};
 
