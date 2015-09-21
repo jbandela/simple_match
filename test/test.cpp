@@ -21,14 +21,78 @@ auto simple_match_get_tuple(const point& p) {
 	return std::tie(p.x, p.y);
 }
 
+struct holder { virtual ~holder() {} };
+template<class T>
+struct holder_t:holder {
+    T value_;
+
+    holder_t(T v) :value_{ std::move(v) } {}
+};
+
+template<class T>
+auto simple_match_get_tuple(const holder_t<T>& h) {
+    return std::tie(h.value_);
+}
+
+template<class T>
+std::unique_ptr<holder> make_holder(T&& t) {
+    return std::make_unique<holder_t<std::decay_t<T>>>(std::forward<T>(t));
+}
+
+
+void test_holder() {
+	using namespace simple_match;
+	using namespace simple_match::placeholders;
+
+
+    auto m = [](auto&& v) {
+        match(v,
+            some<holder_t<int>>(ds(5)), []() {std::cout << "Got five\n";},
+            some<holder_t<int>>(ds(_x)), [](auto x) {std::cout << "Got int " << x << "\n";},
+            some(), [](auto& x) {std::cout << "Got some other type of holder\n";},
+            none(), []() {std::cout << "Got nullptr\n";}
+        );
+    };
+    auto five = make_holder(5);
+    auto ten = make_holder(10);
+    auto pi = make_holder(3.14);
+    std::unique_ptr<holder> nothing;
+    m(five);
+    m(ten);
+    m(pi);
+    m(nothing);
+}
+
+void test_any() {
+    using namespace simple_match;
+    using namespace simple_match::placeholders;
+
+
+    auto m = [](auto&& v) {
+        match(v,
+            some<int>(5), []() {std::cout << "Got five\n";},
+            some<int>(), [](auto x) {std::cout << "Got int " << x << "\n";},
+            none(), []() {std::cout << "Got nullptr\n";},
+            _, []() {std::cout << "Got some other type of any\n";}
+        );
+    };
+    auto five = boost::any{5};
+    auto ten = boost::any{10};
+    auto pi = boost::any{3.14};
+    boost::any nothing;
+    m(five);
+    m(ten);
+    m(pi);
+    m(nothing);
+}
 
 
 
 void test_some_none() {
-	std::unique_ptr<int> nothing;
 	using namespace simple_match;
 	using namespace simple_match::placeholders;
 
+	std::unique_ptr<int> nothing;
 	auto five = std::make_unique<int>(5);
 	auto ten = std::make_unique<int>(10);
 	auto twelve = std::make_unique<int>(12);
@@ -41,6 +105,11 @@ void test_some_none() {
 			none(), []() {std::cout << "Nothing\n"; }
 		);
 	};
+
+    m(nothing.get());
+    m(five.get());
+    m(ten.get());
+    m(twelve.get());
 
 	m(nothing);
 	m(five);
@@ -475,7 +544,30 @@ void TestBoolExp() {
 	}
 }
 
+struct Base { virtual ~Base() {} };
+struct Paper:Base {};
+struct Rock:Base {};
+struct Scissors:Base {};
 
+void paper_rock_scissors(const Base* b1, const Base* b2) {
+	using namespace simple_match;
+	using namespace simple_match::placeholders;
+
+	match(std::tie(b1, b2),
+		ds(some<Paper>(), some<Paper>()), [](auto&, auto&) {std::cout << "Tie with both Paper\n";},
+		ds(some<Paper>(), some<Rock>()), [](auto&, auto&) {std::cout << "Winner 1 - Paper covers Rock\n";},
+		ds(some<Paper>(), some<Scissors>()), [](auto&, auto&) {std::cout << "Winner 2 - Scissors cuts Paper\n";},
+		ds(some<Rock>(), some<Paper>()), [](auto&, auto&) {std::cout << "Winner 2 - Paper covers Rock\n";},
+		ds(some<Rock>(), some<Rock>()), [](auto&, auto&) {std::cout << "Tie with both Rock\n";},
+		ds(some<Rock>(), some<Scissors>()), [](auto&, auto&) {std::cout << "Winner 1 - Rock smashes Scissors\n";},
+		ds(some<Scissors>(), some<Paper>()), [](auto&, auto&) {std::cout << "Winner 1 - Scissors cuts Paper\n";},
+		ds(some<Scissors>(), some<Rock>()), [](auto&, auto&) {std::cout << "Winner 2 - Rock smashes Scissors\n";},
+		ds(some<Scissors>(), some<Scissors>()), [](auto&, auto&) {std::cout << "Tie both with Scissors\n";}
+
+
+
+	);
+}
 
 
 int main() {
@@ -531,4 +623,15 @@ int main() {
 
 	TestBoolExp();
 
+
+	std::unique_ptr<Base> p1{ new Rock };
+	std::unique_ptr<Base> p2{ new Scissors };
+	std::unique_ptr<Base> p3{ new Paper };
+
+	paper_rock_scissors(p1.get(), p2.get());
+	paper_rock_scissors(p3.get(), p1.get());
+
+
+    test_holder();
+    test_any();
 }
