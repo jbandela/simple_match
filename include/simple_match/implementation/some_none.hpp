@@ -248,8 +248,9 @@ namespace simple_match {
 
 	inline detail::some_t<void, void> some() { return detail::some_t<void, void>{}; }
 
-	template<class Matcher>
-	detail::some_t<void, Matcher> some(Matcher&& m) { return detail::some_t<void, Matcher> { std::forward<Matcher>(m) }; }
+    // Make Matcher... a variadic template so it is a worse match than some<T>(T())
+	template<class... Matcher>
+	detail::some_t<void, Matcher...> some(Matcher&&... m) { return detail::some_t<void, Matcher...> { std::forward<Matcher>(m)... }; }
 
 	template<class Class, class Matcher>
 	detail::some_t<Class, Matcher> some(Matcher&& m) {

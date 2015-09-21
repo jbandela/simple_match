@@ -106,6 +106,10 @@ namespace simple_match {
 	}
 
 
+    struct no_match :std::logic_error {
+        no_match() :logic_error{ "simple_match did not match" } {}
+    };
+
 	namespace detail {
 
 		template<class T, class A1, class F1>
@@ -114,7 +118,7 @@ namespace simple_match {
 				return detail::apply(f, match_get(std::forward<T>(t), std::forward<A1>(a)));
 			}
 			else {
-				throw std::logic_error("No match");
+                throw no_match{};
 			}
 		}
 

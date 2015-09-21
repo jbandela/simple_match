@@ -26,6 +26,10 @@ namespace simple_match {
 			static auto get_pointer(T&& t) {
 				return boost::any_cast<To>(&t);
 			}
+            template<class T>
+            static auto is_null(T&& t) {
+                return t.empty();
+            }
 		};
 		template<class Type>
 		struct pointer_getter<tagged_any<Type>> {
