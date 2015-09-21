@@ -7,6 +7,7 @@
 
 #include "../include/simple_match/boost/any.hpp"
 #include "../include/simple_match/boost/variant.hpp"
+#include "../include/simple_match/boost/optional.hpp"
 #include "../include/simple_match/utility.hpp"
 
 
@@ -331,10 +332,10 @@ void FizzBuzz() {
 	using namespace simple_match;
 	using namespace simple_match::placeholders;
 	for (int i = 1; i <= 100; ++i) {
-		match(std::make_tuple(i%3 == 0,i%5 == 0),
-			ds(true, true ), []() {std::cout << "FizzBuzz\n";},
-			ds(true, _), []() {std::cout << "Fizz\n";},
-			ds(_, true), []() {std::cout << "Buzz\n";},
+		match(std::make_tuple(i%3,i%5),
+			ds(0, 0 ), []() {std::cout << "FizzBuzz\n";},
+			ds(0, _), []() {std::cout << "Fizz\n";},
+			ds(_, 0), []() {std::cout << "Buzz\n";},
 			_, [i]() {std::cout << i << "\n";}
 		);
 	}
@@ -570,6 +571,30 @@ void paper_rock_scissors(const Base* b1, const Base* b2) {
 }
 
 
+boost::optional<int> safe_div(int num ,int denom) {
+    using namespace simple_match;
+    using namespace simple_match::placeholders;
+    return match(std::tie(num, denom), 
+        ds(_, 0), []() {return boost::optional<int>{}; },
+        ds(_x,_y), [](int x, int y) {return boost::optional<int>{x/y}; }
+     );
+}
+
+void test_optional() {
+    using namespace simple_match;
+    using namespace simple_match::placeholders;
+    auto m = [](auto&& v) {
+        return match(v, 
+            some(), [](auto x) {std::cout << "the safe_div answer is " << x << "\n";},
+            none(), []() {std::cout << "Tried to divide by 0 in safe_div\n";}
+        );
+    };
+
+    m(safe_div(4, 2));
+    m(safe_div(4, 0));
+
+}
+
 int main() {
 
 
@@ -634,4 +659,5 @@ int main() {
 
     test_holder();
     test_any();
+    test_optional();
 }
