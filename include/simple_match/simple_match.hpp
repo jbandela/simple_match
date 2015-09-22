@@ -318,6 +318,11 @@ namespace simple_match {
 			return t;
 		}
 
+        template<class... A>
+        std::tuple<A...>& simple_match_get_tuple(std::tuple<A...>& t) {
+            return t;
+        }
+
 		template<class Type>
 		struct tuple_adapter {
 

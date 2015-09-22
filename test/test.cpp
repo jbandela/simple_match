@@ -209,22 +209,10 @@ struct mul3;
 
 using math_variant2_t = boost::variant<boost::recursive_wrapper<add3>, boost::recursive_wrapper<sub3>, boost::recursive_wrapper<neg3>, boost::recursive_wrapper<mul3>,int >;
 
-struct add3 :std::tuple<math_variant2_t, math_variant2_t> {
-	template<class... T>
-	add3(T&&...t) :tuple(std::forward<T>(t)...) {}
-};
-struct sub3 :std::tuple<math_variant2_t, math_variant2_t> {
-	template<class... T>
-	sub3(T&&...t) :tuple(std::forward<T>(t)...) {}
-};
-struct mul3 :std::tuple<math_variant2_t, math_variant2_t> {
-	template<class... T>
-	mul3(T&&...t) :tuple(std::forward<T>(t)...) {}
-};
-struct neg3 :std::tuple<math_variant2_t> {
-	template<class... T>
-	neg3(T&&...t) :tuple(std::forward<T>(t)...) {}
-};
+struct add3 :std::tuple<math_variant2_t, math_variant2_t> { using tuple::tuple; };
+struct sub3 :std::tuple<math_variant2_t, math_variant2_t> { using tuple::tuple; };
+struct mul3 :std::tuple<math_variant2_t, math_variant2_t> { using tuple::tuple; };
+struct neg3 :std::tuple<math_variant2_t> { using tuple::tuple; };
 
 
 int eval(const math_variant_t& m) {
@@ -345,46 +333,34 @@ void FizzBuzz() {
 
 // Adapted from https://github.com/solodon4/Mach7/blob/master/code/test/unit/cppcon-matching.cpp
 
-struct BoolExp { virtual ~BoolExp() {} };
 
-struct VarExpTag {};
-struct ValExpTag {};
-struct NotExpTag {};
-struct AndExpTag {};
-struct OrExpTag {};
 
-using VarExp = simple_match::inheriting_tagged_tuple<BoolExp, VarExpTag, std::string>; 
-using ValExp = simple_match::inheriting_tagged_tuple<BoolExp, ValExpTag, bool>; 
-using NotExp = simple_match::inheriting_tagged_tuple<BoolExp, NotExpTag, std::unique_ptr<BoolExp>>; 
-using AndExp = simple_match::inheriting_tagged_tuple<BoolExp, AndExpTag, std::unique_ptr<BoolExp>,std::unique_ptr<BoolExp>>; 
-using OrExp = simple_match::inheriting_tagged_tuple<BoolExp, OrExpTag, std::unique_ptr<BoolExp>,std::unique_ptr<BoolExp>>; 
+struct VarExp;
+struct NotExp;
+struct AndExp;
+struct OrExp;
 
-namespace simple_match {
-	namespace customization {
+using BoolExp = boost::variant<boost::recursive_wrapper<VarExp>, bool, boost::recursive_wrapper<NotExp>, boost::recursive_wrapper<AndExp>, boost::recursive_wrapper<OrExp>>;
 
-		template<class D>
-		struct exhaustiveness_checker<std::unique_ptr<BoolExp,D>> {
-			using type = some_exhaustiveness<VarExp, ValExp, NotExp, AndExp, OrExp>;
-		};
-	}
+struct VarExp : std::tuple<std::string> { using tuple::tuple; };
+struct NotExp : std::tuple<BoolExp> { using tuple::tuple; };
+struct AndExp : std::tuple<BoolExp,BoolExp> {using tuple::tuple; };
+struct OrExp : std::tuple<BoolExp,BoolExp> {using tuple::tuple; };
+
+
+template<class T,class... U>
+BoolExp make_bool_exp(U&&... u) {
+    return T{ std::forward<U>(u)... };
 }
 
-template<class T, class... A>
-std::unique_ptr<BoolExp> make_bool_exp(A&&... a) {
-	return std::make_unique<T>(std::forward<A>(a)...);
-}
-
-
-
-
-void print(const std::unique_ptr<BoolExp>& exp)
+void print(const BoolExp& exp)
 {
 	using namespace simple_match;
 	using namespace simple_match::placeholders;
 
 	match(exp,
 		some<VarExp>(ds(_x)), [](auto& x) {std::cout << x;},
-		some<ValExp>(ds(_x)), [](auto& x) {std::cout << x;},
+		some<bool>(), [](auto& x) {std::cout << x;},
 		some<NotExp>(ds(_x)), [](auto& x) {std::cout << '!'; print(x);},
 		some<AndExp>(ds(_x, _y)), [](auto& x, auto& y) {std::cout << '('; print(x);std::cout << " & "; print(y); std::cout << ')';},
 		some<OrExp>(ds(_x, _y)), [](auto& x, auto& y) {std::cout << '('; print(x);std::cout << " | "; print(y); std::cout << ')';}
@@ -394,21 +370,9 @@ void print(const std::unique_ptr<BoolExp>& exp)
 }
 
 
-std::unique_ptr<BoolExp> copy(const std::unique_ptr<BoolExp>& exp)
+BoolExp copy(const BoolExp& exp)
 {	
-	using namespace simple_match;
-	using namespace simple_match::placeholders;
-
-
-	
-	return match(exp,
-		some<VarExp>(ds(_x)), [](auto& x) {return make_bool_exp<VarExp>(x);},
-		some<ValExp>(ds(_x)), [](auto& x) {return make_bool_exp<ValExp>(x);},
-		some<NotExp>(ds(_x)), [](auto& x) {return make_bool_exp<NotExp>(copy(x));},
-		some<AndExp>(ds(_x,_y)), [](auto& x, auto& y) {return make_bool_exp<AndExp>(copy(x),copy(y));},
-		some<OrExp>(ds(_x,_y)), [](auto& x, auto& y) {return make_bool_exp<OrExp>(copy(x),copy(y));}
-	);
-
+    return exp;
 }
 
 #include <map>
@@ -425,22 +389,22 @@ std::ostream& operator<<(std::ostream& os, const std::map<K, T, C, A>& m)
 }
 typedef std::map<std::string, bool> Context;
 
-bool eval(Context& ctx, const std::unique_ptr<BoolExp>& exp)
+bool eval(const Context& ctx, const BoolExp& exp)
 {
 	using namespace simple_match;
 	using namespace simple_match::placeholders;
 
 	return match(exp,
-		some<VarExp>(ds(_x)), [&](auto& x)mutable {return ctx[x];},
-		some<ValExp>(ds(_x)), [](auto& x) {return x;},
-		some<NotExp>(ds(_x)), [&](auto& x)mutable {return !eval(ctx,x);},
-		some<AndExp>(ds(_x, _y)), [&](auto& x, auto& y)mutable {return eval(ctx,x) && eval(ctx,y);},
-		some<OrExp>(ds(_x, _y)), [&](auto& x, auto& y)mutable {return eval(ctx,x) || eval(ctx,y);}
+        some<VarExp>(ds(_x)), [&](auto& x) {auto iter = ctx.find(x); return iter == ctx.end() ? false : iter->second;},
+		some<bool>(), [](auto& x) {return x;},
+		some<NotExp>(ds(_x)), [&](auto& x){return !eval(ctx,x);},
+		some<AndExp>(ds(_x, _y)), [&](auto& x, auto& y){return eval(ctx,x) && eval(ctx,y);},
+		some<OrExp>(ds(_x, _y)), [&](auto& x, auto& y){return eval(ctx,x) || eval(ctx,y);}
 	);
 
 }
 
-std::unique_ptr<BoolExp> replace(const std::unique_ptr<BoolExp>& where, const std::string& what, const std::unique_ptr<BoolExp>& with)
+BoolExp replace(const BoolExp& where, const std::string& what, const BoolExp& with)
 {
 	using namespace simple_match;
 	using namespace simple_match::placeholders;
@@ -454,21 +418,37 @@ std::unique_ptr<BoolExp> replace(const std::unique_ptr<BoolExp>& where, const st
 				return make_bool_exp<VarExp>(x);
 			}
 		},
-		some<ValExp>(), [&](auto& x) {return copy(where);},
+		some<bool>(), [&](auto& x) {return copy(where);},
 		some<NotExp>(ds(_x)), [&](auto& x) {return make_bool_exp<NotExp>(replace(x,what,with));},
 		some<AndExp>(ds(_x,_y)), [&](auto& x, auto& y) {return make_bool_exp<AndExp>(replace(x,what,with), replace(y,what,with));},
 		some<OrExp>(ds(_x,_y)), [&](auto& x, auto& y) {return make_bool_exp<OrExp>(replace(x,what,with), replace(y,what,with));}
 	);
 
 }
-bool equal(const std::unique_ptr<BoolExp>& x1, const std::unique_ptr<BoolExp>& x2)
+
+BoolExp& inplace(BoolExp& where, const std::string& what, const BoolExp& with)
+{
+    using namespace simple_match;
+    using namespace simple_match::placeholders;
+
+    match(where,
+        some<VarExp>(ds(_x)), [&](auto& x) mutable { x == what ? where=with : where;},
+        some<bool>(), [&](auto&)mutable {},
+        some<NotExp>(ds(_x)), [&](auto& x)mutable{inplace(x, what, with);},
+        some<AndExp>(ds(_x, _y)), [&](auto& x, auto& y)mutable {inplace(x, what, with); inplace(y, what, with);},
+        some<OrExp>(ds(_x, _y)), [&](auto& x, auto& y)mutable {inplace(x, what, with); inplace(y, what, with);}
+    );
+    return where;
+}
+
+bool equal(const BoolExp& x1, const BoolExp& x2)
 {
 	using namespace simple_match;
 	using namespace simple_match::placeholders;
 
 	return match(std::tie(x1, x2),
 		ds(some<VarExp>(ds(_x)), some<VarExp>(ds(_y))), [](auto& x, auto& y) {return x == y;},
-		ds(some<ValExp>(ds(_x)), some<ValExp>(ds(_y))), [](auto& x, auto& y) {return x == y;},
+		ds(some<bool>(), some<bool>()), [](auto& x, auto& y) {return x == y;},
 		ds(some<NotExp>(ds(_x)), some<NotExp>(ds(_y))), [](auto& x, auto& y) {return equal(x,y);},
 		ds(some<AndExp>(ds(_w,_x)), some<AndExp>(ds(_y,_z))), [](auto& w, auto& x, auto& y, auto& z) {return equal(w,y) && equal(x,z);},
 		ds(some<OrExp>(ds(_w,_x)), some<OrExp>(ds(_y,_z))), [](auto& w, auto& x, auto& y, auto& z) {return equal(w,y) && equal(x,z);},
@@ -481,20 +461,20 @@ bool equal(const std::unique_ptr<BoolExp>& x1, const std::unique_ptr<BoolExp>& x
 	
 }
 
-typedef std::map<std::string, std::unique_ptr<BoolExp>> Assignments;
+typedef std::map<std::string, BoolExp> Assignments;
 
 // Other example: unify
-bool exp_match(const std::unique_ptr<BoolExp>& p, const std::unique_ptr<BoolExp>& x, Assignments& ctx)
+bool exp_match(const BoolExp& p, const BoolExp& x, Assignments& ctx)
 {
 	using namespace simple_match;
 	using namespace simple_match::placeholders;
 
 	return match(std::tie(p, x),
 		ds(some<VarExp>(ds(_x)), _), [&](auto& name)mutable {
-			if (!ctx[name]) { ctx[name] = copy(x);return true; }
+			if (ctx.count(name)==0) { ctx[name] = x;return true; }
 			else { return equal(ctx[name], x); }
 		},
-		ds(some<ValExp>(ds(_x)), some<ValExp>(ds(_y))), [&](auto& x, auto& y)mutable {return x == y;},
+		ds(some<bool>(), some<bool>()), [&](auto& x, auto& y)mutable {return x == y;},
 		ds(some<NotExp>(ds(_x)), some<NotExp>(ds(_y))), [&](auto& x, auto& y)mutable {return exp_match(x, y,ctx);},
 		ds(some<AndExp>(ds(_w, _x)), some<AndExp>(ds(_y, _z))), [&](auto& w, auto& x, auto& y, auto& z)mutable {return exp_match(w, y,ctx) && exp_match(x, z,ctx);},
 		ds(some<OrExp>(ds(_w, _x)), some<OrExp>(ds(_y, _z))), [&](auto& w, auto& x, auto& y, auto& z)mutable {return exp_match(w, y,ctx )&& exp_match(x, z,ctx);},
@@ -507,9 +487,9 @@ bool exp_match(const std::unique_ptr<BoolExp>& p, const std::unique_ptr<BoolExp>
 }
 void TestBoolExp() {
 
-	std::unique_ptr<BoolExp> exp1 = std::make_unique<AndExp>( 
-		std::make_unique<OrExp>(std::make_unique<VarExp>("X"), std::make_unique<VarExp>("Y")), 
-		std::make_unique<NotExp>(std::make_unique<VarExp>("Z")));
+	BoolExp exp1 = AndExp( 
+		OrExp(VarExp("X"), VarExp("Y")), 
+		NotExp(VarExp("Z")));
 
 
 	std::cout << "exp1 = "; print(exp1); std::cout << std::endl;
@@ -521,6 +501,11 @@ void TestBoolExp() {
 	auto exp3 = replace(exp1, "Z", exp2);
 
 	std::cout << "exp3 = "; print(exp3); std::cout << std::endl;
+
+    auto& exp4 = inplace(exp1, "Z", exp2);
+
+    std::cout << "exp4 = "; print(exp4); std::cout << std::endl;
+    std::cout << "exp1 = "; print(exp1); std::cout << " updated! " << std::endl;
 
 	std::cout << (equal(exp1, exp2) ? "exp1 == exp2" : "exp1 <> exp2") << std::endl;
 

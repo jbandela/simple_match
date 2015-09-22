@@ -16,12 +16,7 @@ namespace simple_match {
 		struct pointer_getter<boost::optional<Type>> {
             template<class T>
             static auto get_pointer_no_cast(T&& t) {
-                if (t) {
-                    return &(*t);
-                }
-                else {
-                    return decltype(&(*t)){nullptr};
-                }
+                return t.get_ptr();
             }
             template<class T>
             static auto is_null(T&& t) {
