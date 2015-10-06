@@ -10,6 +10,7 @@
 #include "../include/simple_match/boost/optional.hpp"
 #include "../include/simple_match/utility.hpp"
 #include "../include/simple_match/from_string.hpp"
+#include "../include/simple_match/regex.hpp"
 
 
 struct point {
@@ -602,6 +603,23 @@ void test_from_string() {
     m("xyz");
 }
 
+void test_regex() {
+    using namespace simple_match;
+    using namespace simple_match::placeholders;
+
+    auto m = [](const std::string& s) {
+        match(s,
+            rex("([a-z]+)\\.txt", _x), [](auto& x) {std::cout << x << "\n";},
+            rex("([0-9]{4})-([0-9]{2})-([0-9]{2})", from_string<int>(_x), from_string<int>(_x), from_string<int>(_x)), [](auto y, auto m, auto d) {std::cout << "Got date " << y << " " << m << " " << d << "\n";},
+            _, []() {std::cout << "Did not match\n";}
+
+        );
+    };
+
+    m("foo.txt");
+    m("2015-01-22");
+}
+
 int main() {
 
 
@@ -668,4 +686,5 @@ int main() {
     test_any();
     test_optional();
     test_from_string();
+    test_regex();
 }

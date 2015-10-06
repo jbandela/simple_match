@@ -30,7 +30,7 @@ namespace simple_match {
                 return match_get(t_, m_);
             }
 
-            from_string_t(Matcher m) :m_{ std::forward<Matcher>(m) } {}
+            from_string_t(Matcher m) :m_{ std::move(m) } {}
         };
         template<class Type>
         struct from_string_t<Type,void> {
