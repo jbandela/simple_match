@@ -9,6 +9,7 @@
 #include "../include/simple_match/boost/variant.hpp"
 #include "../include/simple_match/boost/optional.hpp"
 #include "../include/simple_match/utility.hpp"
+#include "../include/simple_match/from_string.hpp"
 
 
 struct point {
@@ -580,6 +581,27 @@ void test_optional() {
 
 }
 
+void test_from_string() {
+    using namespace simple_match;
+    using namespace simple_match::placeholders;
+
+    auto m = [](const std::string& s) {
+        match(s,
+            from_string<int>(_x), [](auto x) {std::cout << "Got int " << x << "\n";},
+            from_string<double>(_x < 123), [](auto x) {std::cout << "Got double less than 123.3 " << x << "\n";},
+            from_string<double>(), []() {std::cout << "Matched a double " << "\n";},
+            _, []() {std::cout << "Did not match\n";}
+
+            );
+    };
+
+    m("123");
+    m("123.3");
+    m("23.3");
+    m("");
+    m("xyz");
+}
+
 int main() {
 
 
@@ -645,4 +667,5 @@ int main() {
     test_holder();
     test_any();
     test_optional();
+    test_from_string();
 }
