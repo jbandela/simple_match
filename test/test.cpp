@@ -266,6 +266,7 @@ int eval(const math_variant2_t& m) {
 	using namespace simple_match::placeholders;
 
 	return simple_match::match(m,
+        some<add3>(ds(some<int>(_x), some<mul3>(ds(some<int>(_y), some<int>(_z))))), [](int x, int y, int z) {std::cout << "Fused add-mul\n";return x+y*z;},
 		some<add3>(ds(_x,_y)), [](auto&& x, auto&& y) {return eval(x) + eval(y);},
 		some<sub3>(ds(_x,_y)), [](auto&& x, auto&& y) {return eval(x) - eval(y);},
 		some<mul3>(ds(_x,_y)), [](auto&& x, auto&& y) {return eval(x) * eval(y);},
@@ -607,17 +608,33 @@ void test_regex() {
     using namespace simple_match;
     using namespace simple_match::placeholders;
 
-    auto m = [](const std::string& s) {
+    auto toll_free = make_matcher_predicate([](const std::string& s) {
+        const static std::vector<std::string> toll_free_nums{ "800","888","877","866","855" };
+        return std::find(toll_free_nums.begin(), toll_free_nums.end(), s) != toll_free_nums.end();
+    
+    });
+
+    auto m = [&](const std::string& s) {
         match(s,
             rex("([a-z]+)\\.txt", _x), [](auto& x) {std::cout << x << "\n";},
-            rex("([0-9]{4})-([0-9]{2})-([0-9]{2})", from_string<int>(_x), from_string<int>(_x), from_string<int>(_x)), [](auto y, auto m, auto d) {std::cout << "Got date " << y << " " << m << " " << d << "\n";},
-            _, []() {std::cout << "Did not match\n";}
+            rex("([0-9]{4})-([0-9]{2})-([0-9]{2})", from_string<int>(_x), from_string<int>(0 < _x <= 12), from_string<int>(0 < _x <= 31)), [](auto y, auto m, auto d) {std::cout << "Got date " << y << " " << m << " " << d << "\n";},
+            rex("([0-9]{3})-([0-9]+)-([0-9]+)", "979", _y, _z), [](auto& y, auto& z) {std::cout << "Got local phone " << y << "-" << z << "\n";},
+            rex("([0-9]{3})-([0-9]+)-([0-9]+)", toll_free, _y, _z), [](auto& x, auto& y, auto& z) {std::cout << "Got toll free " << x << "-" << y << "-" << z << "\n";},
+            rex("([0-9]{3})-([0-9]+)-([0-9]+)", _x, _y, _z), [](auto& x, auto& y, auto& z) {std::cout << "Got long distance " << x << "-" << y << "-" << z << "\n";},
+            _x, [](auto& x) {std::cout << x << " Did not match a regex\n";}
 
         );
     };
 
     m("foo.txt");
     m("2015-01-22");
+    m("2015-13-22");
+    m("2015-01-00");
+    m("979-123-4567");
+    m("877-123-4567");
+    m("561-123-4567");
+    
+
 }
 
 int main() {
@@ -628,12 +645,14 @@ int main() {
 
 	math_variant_t var{ add{2,mul{3,neg{2}} } };
 	std::cout << eval(var) << "\n";
-
 	eval_any any_var{ add2{2,mul2{3,neg2{2}} } };
 	std::cout << eval(any_var) << "\n";
 
 	math_variant2_t var2{ add3{2,mul3{3,neg3{2}} } };
 	std::cout << eval(var2) << "\n";
+    math_variant2_t var_fused{ sub3{10,add3{2,mul3{3,2} }} };
+	std::cout << eval(var_fused) << "\n";
+
 
 	std::unique_ptr<eval_base_t> eval_base = std::make_unique<add4>(
 		std::make_unique<int_holder>(2),
