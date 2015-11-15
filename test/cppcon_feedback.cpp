@@ -3,7 +3,7 @@
 #include <memory>
 #include "../include/simple_match/simple_match.hpp"
 #include "../include/simple_match/boost/variant.hpp"
-#include "../include/simple_match/from_string.hpp"
+#include "../include/simple_match/boost/lexical_cast.hpp"
 #include "../include/simple_match/regex.hpp"
 
 
@@ -11,26 +11,27 @@ void test_regex() {
     using namespace simple_match;
     using namespace simple_match::placeholders;
 
-    auto toll_free = make_matcher_predicate([](const std::string& s) {
+    auto toll_free = make_matcher_predicate([](boost::string_ref s) {
         const static std::vector<std::string> toll_free_nums{ "800","888","877","866","855" };
         return std::find(toll_free_nums.begin(), toll_free_nums.end(), s) != toll_free_nums.end();
 
     });
 
-    auto m = [&](const std::string& s) {
+	std::regex r_text{ "([a-z]+)\\.txt" };
+    auto m = [&](boost::string_ref s) {
         match(s,
-            rex("([a-z]+)\\.txt", _x), [](auto& x) {std::cout << x << "\n";},
-            rex("([0-9]{4})-([0-9]{2})-([0-9]{2})", from_string<int>(_x), from_string<int>(0 < _x <= 12), from_string<int>(0 < _x <= 31)), [](auto y, auto m, auto d) {std::cout << "Got date " << y << " " << m << " " << d << "\n";},
-            rex("([0-9]{3})-([0-9]+)-([0-9]+)", "979", _y, _z), [](auto& y, auto& z) {std::cout << "Got local phone " << y << "-" << z << "\n";},
-            rex("([0-9]{3})-([0-9]+)-([0-9]+)", toll_free, _y, _z), [](auto& x, auto& y, auto& z) {std::cout << "Got toll free " << x << "-" << y << "-" << z << "\n";},
-            rex("([0-9]{3})-([0-9]+)-([0-9]+)", _x, _y, _z), [](auto& x, auto& y, auto& z) {std::cout << "Got long distance " << x << "-" << y << "-" << z << "\n";},
+            rex_search(r_text, _x), [](auto& x) {std::cout << x << "\n";},
+            rex_search("([0-9]{4})-([0-9]{2})-([0-9]{2})", lexical_cast<int>(_x), lexical_cast<int>(0 < _x <= 12), lexical_cast<int>(0 < _x <= 31)), [](auto y, auto m, auto d) {std::cout << "Got date " << y << " " << m << " " << d << "\n";},
+            rex_match("([0-9]{3})-([0-9]+)-([0-9]+)", "979", _y, _z), [](auto& y, auto& z) {std::cout << "Got local phone " << y << "-" << z << "\n";},
+            rex_match("([0-9]{3})-([0-9]+)-([0-9]+)", toll_free, _y, _z), [](auto& x, auto& y, auto& z) {std::cout << "Got toll free " << x << "-" << y << "-" << z << "\n";},
+            rex_match("([0-9]{3})-([0-9]+)-([0-9]+)", _x, _y, _z), [](auto& x, auto& y, auto& z) {std::cout << "Got long distance " << x << "-" << y << "-" << z << "\n";},
             _x, [](auto& x) {std::cout << x << " Did not match a regex\n";}
 
         );
     };
 
-    m("foo.txt");
-    m("2015-01-22");
+    m(" foo.txt");
+    m(" 2015-01-22");
     m("2015-13-22");
     m("2015-01-00");
     m("979-123-4567");
