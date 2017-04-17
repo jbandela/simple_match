@@ -1,4 +1,4 @@
-#Simple, Extensible C++ Pattern Matching Library
+# Simple, Extensible C++ Pattern Matching Library
 
 I have recently been looking at Haskell and Rust. One of the things I wanted in C++ from those languages is pattern matching.
 
