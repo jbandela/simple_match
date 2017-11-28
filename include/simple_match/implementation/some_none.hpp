@@ -158,9 +158,7 @@ namespace simple_match {
 			}
 
 			template<class T>
-			auto get(T&& t) {
-				// Prevent the warning "unused parameter 't' [-Wunused-parameter]"
-				(void) t;
+			auto get(T&&) {
 				return std::tie();
 			}
 		};
