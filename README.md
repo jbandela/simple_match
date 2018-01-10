@@ -67,8 +67,8 @@ Licensed under the Boost Software License.
 We are going to assume you have the following at the top of your file
 
 ```cpp
-#incude "simple_match/simple_match.hpp"
-#incude "simple_match/some_none.hpp"
+#include "simple_match/simple_match.hpp"
+#include "simple_match/some_none.hpp"
 
 
 using namespace simple_match;
