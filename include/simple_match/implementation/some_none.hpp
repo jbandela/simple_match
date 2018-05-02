@@ -158,7 +158,7 @@ namespace simple_match {
 			}
 
 			template<class T>
-			auto get(T&& t) {
+			auto get(T&&) {
 				return std::tie();
 			}
 		};
