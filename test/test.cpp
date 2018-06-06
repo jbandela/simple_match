@@ -9,7 +9,7 @@
 #include "../include/simple_match/boost/variant.hpp"
 #include "../include/simple_match/boost/optional.hpp"
 #include "../include/simple_match/utility.hpp"
-#include "../include/simple_match/from_string.hpp"
+#include "../include/simple_match/boost/lexical_cast.hpp"
 #include "../include/simple_match/regex.hpp"
 
 
@@ -583,15 +583,15 @@ void test_optional() {
 
 }
 
-void test_from_string() {
+void test_lexical_cast() {
     using namespace simple_match;
     using namespace simple_match::placeholders;
 
     auto m = [](const std::string& s) {
         match(s,
-            from_string<int>(_x), [](auto x) {std::cout << "Got int " << x << "\n";},
-            from_string<double>(_x < 123), [](auto x) {std::cout << "Got double less than 123.3 " << x << "\n";},
-            from_string<double>(), []() {std::cout << "Matched a double " << "\n";},
+            lexical_cast<int>(_x), [](auto x) {std::cout << "Got int " << x << "\n";},
+            lexical_cast<double>(_x < 123), [](auto x) {std::cout << "Got double less than 123.3 " << x << "\n";},
+            lexical_cast<double>(), []() {std::cout << "Matched a double " << "\n";},
             _, []() {std::cout << "Did not match\n";}
 
             );
@@ -608,7 +608,7 @@ void test_regex() {
     using namespace simple_match;
     using namespace simple_match::placeholders;
 
-    auto toll_free = make_matcher_predicate([](const std::string& s) {
+    auto toll_free = make_matcher_predicate([](boost::string_ref s) {
         const static std::vector<std::string> toll_free_nums{ "800","888","877","866","855" };
         return std::find(toll_free_nums.begin(), toll_free_nums.end(), s) != toll_free_nums.end();
     
@@ -616,11 +616,11 @@ void test_regex() {
 
     auto m = [&](const std::string& s) {
         match(s,
-            rex("([a-z]+)\\.txt", _x), [](auto& x) {std::cout << x << "\n";},
-            rex("([0-9]{4})-([0-9]{2})-([0-9]{2})", from_string<int>(_x), from_string<int>(0 < _x <= 12), from_string<int>(0 < _x <= 31)), [](auto y, auto m, auto d) {std::cout << "Got date " << y << " " << m << " " << d << "\n";},
-            rex("([0-9]{3})-([0-9]+)-([0-9]+)", "979", _y, _z), [](auto& y, auto& z) {std::cout << "Got local phone " << y << "-" << z << "\n";},
-            rex("([0-9]{3})-([0-9]+)-([0-9]+)", toll_free, _y, _z), [](auto& x, auto& y, auto& z) {std::cout << "Got toll free " << x << "-" << y << "-" << z << "\n";},
-            rex("([0-9]{3})-([0-9]+)-([0-9]+)", _x, _y, _z), [](auto& x, auto& y, auto& z) {std::cout << "Got long distance " << x << "-" << y << "-" << z << "\n";},
+            rex_match("([a-z]+)\\.txt", _x), [](auto& x) {std::cout << x << "\n";},
+            rex_match("([0-9]{4})-([0-9]{2})-([0-9]{2})", lexical_cast<int>(_x), lexical_cast<int>(0 < _x <= 12), lexical_cast<int>(0 < _x <= 31)), [](auto y, auto m, auto d) {std::cout << "Got date " << y << " " << m << " " << d << "\n";},
+            rex_match("([0-9]{3})-([0-9]+)-([0-9]+)", "979", _y, _z), [](auto& y, auto& z) {std::cout << "Got local phone " << y << "-" << z << "\n";},
+            rex_match("([0-9]{3})-([0-9]+)-([0-9]+)", toll_free, _y, _z), [](auto& x, auto& y, auto& z) {std::cout << "Got toll free " << x << "-" << y << "-" << z << "\n";},
+            rex_match("([0-9]{3})-([0-9]+)-([0-9]+)", _x, _y, _z), [](auto& x, auto& y, auto& z) {std::cout << "Got long distance " << x << "-" << y << "-" << z << "\n";},
             _x, [](auto& x) {std::cout << x << " Did not match a regex\n";}
 
         );
@@ -704,6 +704,6 @@ int main() {
     test_holder();
     test_any();
     test_optional();
-    test_from_string();
+    test_lexical_cast();
     test_regex();
 }
