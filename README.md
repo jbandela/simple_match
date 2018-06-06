@@ -68,7 +68,6 @@ We are going to assume you have the following at the top of your file
 
 ```cpp
 #include "simple_match/simple_match.hpp"
-#include "simple_match/some_none.hpp"
 
 
 using namespace simple_match;
@@ -136,17 +135,17 @@ Now we can even have more fun! Let's represent a 2d point as a tuple.
 std::tuple<int,int> p(0,0);
 
 match(p,
-	tup(0,0), [](){std::cout << "Point is at the origin";},
-	tup(0,_), [](){std::cout << "Point is on the horizontal axis";},
-	tup(_,0), [](){std::cout << "Point is on the vertical axis";}.
-	tup(_x < 10,_), [](int x){std::cout << x << " is less than 10";},
-	tup(_x,_x), [](int x, int y){ std::cout << x << "," << y << " Is not on an axis";}
+	ds(0,0), [](){std::cout << "Point is at the origin";},
+	ds(0,_), [](){std::cout << "Point is on the horizontal axis";},
+	ds(_,0), [](){std::cout << "Point is on the vertical axis";}.
+	ds(_x < 10,_), [](int x){std::cout << x << " is less than 10";},
+	ds(_x,_x), [](int x, int y){ std::cout << x << "," << y << " Is not on an axis";}
 );
 ```
 
-`tup` does tuple matching. Notice you can use the same expressions as you could without tuples. As before `_x` results in a value being passed to the lambda. `_` matches anything and ignores it, so no corresponding variable is passed to the lambda.
+`ds` stands for de-structure and splits a tuple into its parts. Notice you can use the same expressions as you could without tuples. As before `_x` results in a value being passed to the lambda. `_` matches anything and ignores it, so no corresponding variable is passed to the lambda.
 
-We can actually use `tup` to deconstruct our own `struct`s and `class`es .
+We can actually use `ds` to deconstruct our own `struct`s and `class`es .
 First we have to specialize `simple_match::customization::tuple_adapter` for our type.
 
 ```cpp
@@ -156,7 +155,7 @@ struct point {
 	point(int x_,int y_):x(x_),y(y_){}
 };
 
-// Adapting point to be used with tup
+// Adapting point to be used with ds
 namespace simple_match {
 	namespace customization {
 		template<>
@@ -173,17 +172,17 @@ namespace simple_match {
 }
 ```
 
-Then we can use `tup` like we did with a tuple.
+Then we can use `ds` like we did with a tuple.
 
 ```cpp
 point p{0,0};
 
 match(p,
-	tup(0,0), [](){std::cout << "Point is at the origin";},
-	tup(0,_), [](){std::cout << "Point is on the horizontal axis";},
-	tup(_,0), [](){std::cout << "Point is on the vertical axis";}.
-	tup(_x < 10,_), [](int x){std::cout << x << " is less than 10";},
-	tup(_x,_x), [](int x, int y){ std::cout << x << "," << y << " Is not on an axis";}
+	ds(0,0), [](){std::cout << "Point is at the origin";},
+	ds(0,_), [](){std::cout << "Point is on the horizontal axis";},
+	ds(_,0), [](){std::cout << "Point is on the vertical axis";}.
+	ds(_x < 10,_), [](int x){std::cout << x << " is less than 10";},
+	ds(_x,_x), [](int x, int y){ std::cout << x << "," << y << " Is not on an axis";}
 );
 ```
 
@@ -215,21 +214,21 @@ match(pp,
 ```
 Notice, how our match code did not change.
 
-We can do better because `some` composes. Since we specialized `tuple_adapter` we can use `tup` with `point`.
+We can do better because `some` composes. Since we specialized `tuple_adapter` we can use `ds` with `point`.
 
 ```cpp
 auto pp = std::make_unique<point>(0,0);
 
 match(pp,
-	some(tup(0,0)), [](){std::cout << "Point is at the origin";},
-	some(tup(0,_)), [](){std::cout << "Point is on the horizontal axis";},
-	some(tup(_,0)), [](){std::cout << "Point is on the vertical axis";}.
-	some(tup(_x < 10,_)), [](int x){std::cout << x << " is less than 10";},
-	some(tup(_x,_x)), [](int x, int y){ std::cout << x << "," << y << " Is not on an axis";},
+	some(ds(0,0)), [](){std::cout << "Point is at the origin";},
+	some(ds(0,_)), [](){std::cout << "Point is on the horizontal axis";},
+	some(ds(_,0)), [](){std::cout << "Point is on the vertical axis";}.
+	some(ds(_x < 10,_)), [](int x){std::cout << x << " is less than 10";},
+	some(ds(_x,_x)), [](int x, int y){ std::cout << x << "," << y << " Is not on an axis";},
 	none(), [](){std::cout << "Null pointer";}
 );
 ```
-Notice how `some` and `tup` compose. If we wanted to to, we could have pointers in tuples, and tuples in pointers and it would just work.
+Notice how `some` and `ds` compose. If we wanted to to, we could have pointers in tuples, and tuples in pointers and it would just work.
 
 `some` can also use RTTI to do downcasting.
 
@@ -253,7 +252,7 @@ struct point3d:point{
 	point3d(int x_,int y_, int z_):x(x_),y(y_),z(z_){}
 };
 
-// Adapting point2d and point3d to be used with tup
+// Adapting point2d and point3d to be used with ds
 namespace simple_match {
 	namespace customization {
 		template<>
@@ -286,15 +285,15 @@ Then we can use it like this
 std::unique_ptr<point> pp(new point2d(0,0));
 
 match(pp,
-	some<point2d>(tup(_x,_x)), [](int x, int y){std::cout << x << "," << y;},
-	some<point3d>(tup(_x,_x,_x)), [](int x, int y, int z){std::cout << x << "," << y << "," << z;},
+	some<point2d>(ds(_x,_x)), [](int x, int y){std::cout << x << "," << y;},
+	some<point3d>(ds(_x,_x,_x)), [](int x, int y, int z){std::cout << x << "," << y << "," << z;},
 	some(), [](point& p){std::cout << "Unknown point type\n"},
 	none(), [](){std::cout << "Null pointer\n"}
 );
 
 ```
 
-Notice how we can safely downcast, and use `tup` to destructure the `point`. Everything composes nicely.
+Notice how we can safely downcast, and use `ds` to destructure the `point`. Everything composes nicely.
 
 # Implementation Details
 
