@@ -1,0 +1,18 @@
+{
+  "name": "simple-match",
+  "version-semver": "0.1.0",
+  "default-features": ["test"],
+  "features": {
+    "test": {
+      "description": "Required dependencies of tests",
+      "dependencies": [
+        "boost-any",
+        "boost-lexical-cast",
+        "boost-math",
+        "boost-optional",
+        "boost-utility",
+        "boost-variant"
+      ]
+    }
+  }
+}
